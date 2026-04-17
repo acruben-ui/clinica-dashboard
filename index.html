@@ -437,7 +437,7 @@
 // ─────────────────────────────────────────
 //  CONFIGURAÇÃO — substitua pela URL do seu Web App GAS
 // ─────────────────────────────────────────
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxGwSb9KuSMHu8KN-p9-2t9YovwOo9pcxygi_HzNgayLXzxP33E9FPJ75sKmdadtUor/exec";
+const GAS_URL = "COLE_AQUI_A_URL_DO_SEU_WEB_APP_GAS";
 
 // ─────────────────────────────────────────
 //  ESTADO GLOBAL
@@ -484,8 +484,13 @@ function showToast(msg, tipo = "info") {
 
 function setLoading(on) {
   $("tabelaSkeleton").classList.toggle("hidden", !on);
-  $("tabelaWrap").classList.toggle("hidden", on);
-  $("tabelaEmpty").classList.add("hidden");
+  // [Bug 3 corrigido] Quando LIGANDO o loading: esconde tabela e estado vazio.
+  // Quando DESLIGANDO: NÃO forçamos a visibilidade aqui — renderizarTabela()
+  // decide o que mostrar (tabela com dados OU mensagem de sem dados).
+  if (on) {
+    $("tabelaWrap").classList.add("hidden");
+    $("tabelaEmpty").classList.add("hidden");
+  }
 }
 
 // ─────────────────────────────────────────
@@ -507,7 +512,8 @@ $("loginForm").addEventListener("submit", async (e) => {
   const params  = isEmail ? `email=${encodeURIComponent(cred)}` : `token=${encodeURIComponent(cred)}`;
 
   try {
-    const res  = await fetch(`${GAS_URL}?action=dashboard&${params}`);
+    // [Bug 1 corrigido] _t=timestamp impede que o GAS sirva resposta cacheada
+    const res  = await fetch(`${GAS_URL}?action=dashboard&${params}&_t=${Date.now()}`);
     const json = await res.json();
 
     if (!json.ok) {
@@ -573,7 +579,7 @@ async function carregarProfissionais() {
     ? `email=${encodeURIComponent(state.credencial)}`
     : `token=${encodeURIComponent(state.credencial)}`;
   try {
-    const res  = await fetch(`${GAS_URL}?action=profissionais&${params}`);
+    const res  = await fetch(`${GAS_URL}?action=profissionais&${params}&_t=${Date.now()}`);
     const json = await res.json();
     if (json.ok && json.profissionais) {
       const sel = $("filtProfissional");
@@ -624,21 +630,26 @@ async function buscar() {
   const paciente   = $("filtPaciente").value.trim();
   const profissional = $("filtProfissional") ? $("filtProfissional").value : "";
 
-  if (mes && ano) { params.set("mes", mes); params.set("ano", ano); }
-  if (dataInicio)  params.set("dataInicio", dataInicio);
-  if (dataFim)     params.set("dataFim", dataFim);
-  if (paciente)    params.set("paciente", paciente);
+  // [Bug 2 corrigido] Mês e ano agora são enviados de forma independente.
+  // Antes: "if (mes && ano)" exigia os dois juntos — se só um fosse selecionado, nada era filtrado.
+  if (mes)  params.set("mes", mes);
+  if (ano)  params.set("ano", ano);
+  if (dataInicio)   params.set("dataInicio", dataInicio);
+  if (dataFim)      params.set("dataFim", dataFim);
+  if (paciente)     params.set("paciente", paciente);
   if (profissional) params.set("profissional", profissional);
+
+  // [Bug 1 corrigido] Timestamp evita cache do GAS
+  params.set("_t", Date.now());
 
   setLoading(true);
   try {
     const res  = await fetch(`${GAS_URL}?${params.toString()}`);
     const json = await res.json();
-    if (!json.ok) { showToast(json.erro || "Erro ao buscar dados.", "erro"); return; }
+    if (!json.ok) { showToast(json.erro || "Erro ao buscar dados.", "erro"); setLoading(false); return; }
     renderizarDados(json);
   } catch (err) {
     showToast("Erro de conexão com o servidor.", "erro");
-  } finally {
     setLoading(false);
   }
 }
@@ -672,6 +683,11 @@ function renderizarDados(json) {
   $("kpiTicket").textContent       = moeda(ticket);
   $("kpiTotalPeriodoSub").textContent = `${count} atendimento${count !== 1 ? "s" : ""}`;
 
+  // [Bug 3 corrigido] setLoading(false) vem ANTES de renderizarTabela().
+  // Antes: setLoading(false) vinha depois e sobrescrevia o estado vazio
+  // que renderizarTabela() tinha configurado, escondendo a mensagem "sem dados".
+  setLoading(false);
+
   // ── Tabela ──
   aplicarOrdenacao();
   renderizarTabela();
@@ -679,8 +695,6 @@ function renderizarDados(json) {
   // ── Gráficos ──
   renderizarGraficoMes(json.porMes || {});
   renderizarGraficoSec(json);
-
-  setLoading(false);
 }
 
 // ─────────────────────────────────────────
