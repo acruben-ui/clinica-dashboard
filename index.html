@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clínica Dashboard</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#f0f7ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a5f' }
+          },
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Font Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Scrollbar fino ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+
+    /* ── Animações ── */
+    @keyframes fadeIn  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    .fade-in  { animation: fadeIn .35s ease forwards; }
+    .spin     { animation: spin .8s linear infinite; }
+
+    /* ── Gradiente do header ── */
+    .header-grad { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); }
+
+    /* ── Card hover ── */
+    .kpi-card { transition: transform .2s, box-shadow .2s; }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(37,99,235,.15); }
+
+    /* ── Table row hover ── */
+    tbody tr { transition: background .15s; }
+    tbody tr:hover { background: #eff6ff !important; }
+
+    /* ── Input focus ── */
+    input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+
+    /* ── Tooltip gráfico ── */
+    .chart-tooltip { font-family: Inter, sans-serif; }
+
+    /* ── Skeleton loader ── */
+    .skeleton { background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* ── Badge tipo ── */
+    .badge-admin { background:#fef3c7; color:#92400e; }
+    .badge-user  { background:#d1fae5; color:#065f46; }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans min-h-screen">
+
+<!-- ══════════════════════════════════════════
+     TELA DE LOGIN
+══════════════════════════════════════════ -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-100 to-blue-50">
+  <div class="w-full max-w-md fade-in">
+
+    <!-- Logo / título -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl header-grad shadow-lg mb-4">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
+               M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2
+               m-6 9l2 2 4-4"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-800">Dashboard da Clínica</h1>
+      <p class="text-slate-500 mt-1 text-sm">Acesse com seu e-mail ou token de acesso</p>
+    </div>
+
+    <!-- Card de login -->
+    <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+      <form id="loginForm" novalidate>
+
+        <!-- Campo credencial -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="credencial">
+            E-mail ou Token
+          </label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12
+                     a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
+              </svg>
+            </span>
+            <input id="credencial" type="text" autocomplete="username"
+              placeholder="ex: joao@clinica.com ou ABC123"
+              class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800
+                     placeholder:text-slate-400 bg-slate-50 transition"/>
+          </div>
+        </div>
+
+        <!-- Erro de login -->
+        <div id="loginErro" class="hidden mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl
+             text-sm text-red-700 flex items-center gap-2">
+          <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414
+              1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293
+              1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10
+              8.586 8.707 7.293z" clip-rule="evenodd"/>
+          </svg>
+          <span id="loginErroMsg">Credenciais inválidas.</span>
+        </div>
+
+        <!-- Botão entrar -->
+        <button type="submit" id="btnLogin"
+          class="w-full py-2.5 px-6 rounded-xl text-sm font-semibold text-white header-grad
+                 hover:opacity-90 transition shadow-md flex items-center justify-center gap-2">
+          <span id="btnLoginTxt">Entrar</span>
+          <svg id="btnLoginSpinner" class="hidden w-4 h-4 spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25 stroke-white"/>
+            <path d="M4 12a8 8 0 018-8" stroke-width="4" class="stroke-white"/>
+          </svg>
+        </button>
+
+      </form>
+
+      <p class="mt-6 text-center text-xs text-slate-400">
+        Em caso de dúvidas, contate o administrador da clínica.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     DASHBOARD PRINCIPAL
+══════════════════════════════════════════ -->
+<div id="dashboardScreen" class="hidden min-h-screen flex flex-col">
+
+  <!-- ── HEADER ── -->
+  <header class="header-grad text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <!-- Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
+                 M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2
+                 m-6 9l2 2 4-4"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-bold text-sm sm:text-base leading-tight">Dashboard da Clínica</h1>
+          <p class="text-blue-200 text-xs leading-tight" id="headerSubtitle">Carregando…</p>
+        </div>
+      </div>
+
+      <!-- Usuário + logout -->
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <p class="text-xs font-semibold" id="headerNome">—</p>
+          <p class="text-xs text-blue-200" id="headerTipo">—</p>
+        </div>
+        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold" id="headerAvatar">—</div>
+        <button onclick="logout()"
+          class="text-xs bg-white/10 hover:bg-white/20 transition px-3 py-1.5 rounded-lg font-medium">
+          Sair
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── CORPO ── -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- ── FILTROS ── -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 fade-in">
+      <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0
+               01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
+        </svg>
+        Filtros
+      </h2>
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+
+        <!-- Profissional (só admin) -->
+        <div id="filtProfWrap" class="hidden col-span-2 sm:col-span-1">
+          <label class="label-filtro">Profissional</label>
+          <select id="filtProfissional" class="input-filtro">
+            <option value="">Todos</option>
+          </select>
+        </div>
+
+        <!-- Mês -->
+        <div>
+          <label class="label-filtro">Mês</label>
+          <select id="filtMes" class="input-filtro"></select>
+        </div>
+
+        <!-- Ano -->
+        <div>
+          <label class="label-filtro">Ano</label>
+          <select id="filtAno" class="input-filtro"></select>
+        </div>
+
+        <!-- Data início -->
+        <div>
+          <label class="label-filtro">Data início</label>
+          <input id="filtDataInicio" type="date" class="input-filtro" />
+        </div>
+
+        <!-- Data fim -->
+        <div>
+          <label class="label-filtro">Data fim</label>
+          <input id="filtDataFim" type="date" class="input-filtro" />
+        </div>
+
+        <!-- Paciente -->
+        <div class="col-span-2 sm:col-span-1">
+          <label class="label-filtro">Paciente</label>
+          <input id="filtPaciente" type="text" placeholder="Buscar paciente…" class="input-filtro" />
+        </div>
+
+      </div>
+
+      <!-- Botões -->
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button onclick="buscar()"
+          class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white
+                 bg-brand-600 hover:bg-brand-700 transition shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          Aplicar filtros
+        </button>
+        <button onclick="limparFiltros()"
+          class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-slate-600
+                 bg-slate-100 hover:bg-slate-200 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+          Limpar
+        </button>
+        <button onclick="exportarCSV()"
+          class="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
+                 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition border border-emerald-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Exportar CSV
+        </button>
+      </div>
+    </section>
+
+    <!-- ── KPI CARDS ── -->
+    <section id="kpiSection" class="grid grid-cols-2 lg:grid-cols-4 gap-4 fade-in">
+      <div class="kpi-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <p class="text-xs font-medium text-slate-500 mb-1">Total do período</p>
+        <p id="kpiTotalPeriodo" class="text-2xl font-bold text-slate-800">R$ —</p>
+        <p class="text-xs text-slate-400 mt-1" id="kpiTotalPeriodoSub">—</p>
+      </div>
+      <div class="kpi-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <p class="text-xs font-medium text-slate-500 mb-1">Total geral</p>
+        <p id="kpiTotalGeral" class="text-2xl font-bold text-brand-600">R$ —</p>
+        <p class="text-xs text-slate-400 mt-1">Todos os registros</p>
+      </div>
+      <div class="kpi-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <p class="text-xs font-medium text-slate-500 mb-1">Atendimentos</p>
+        <p id="kpiAtendimentos" class="text-2xl font-bold text-slate-800">—</p>
+        <p class="text-xs text-slate-400 mt-1">No período filtrado</p>
+      </div>
+      <div class="kpi-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <p class="text-xs font-medium text-slate-500 mb-1">Ticket médio</p>
+        <p id="kpiTicket" class="text-2xl font-bold text-slate-800">R$ —</p>
+        <p class="text-xs text-slate-400 mt-1">Por atendimento</p>
+      </div>
+    </section>
+
+    <!-- ── GRÁFICOS ── -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-5 fade-in">
+
+      <!-- Gráfico de barras (por mês) -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-slate-700">Faturamento por mês</h3>
+          <span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Barras</span>
+        </div>
+        <div class="relative" style="height:220px">
+          <canvas id="chartMes"></canvas>
+          <div id="chartMesEmpty" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm hidden">
+            Sem dados para exibir
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico de pizza/barras (por profissional — admin) / linha mensal (user) -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-slate-700" id="chartSecTitle">Por profissional</h3>
+          <span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full" id="chartSecBadge">Rosca</span>
+        </div>
+        <div class="relative" style="height:220px">
+          <canvas id="chartSec"></canvas>
+          <div id="chartSecEmpty" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm hidden">
+            Sem dados para exibir
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── TABELA DE ATENDIMENTOS ── -->
+    <section class="bg-white rounded-2xl border border-slate-100 shadow-sm fade-in overflow-hidden">
+
+      <!-- Cabeçalho da tabela -->
+      <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <h3 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
+                 a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Atendimentos
+        </h3>
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <span id="tabelaCount">0 registros</span>
+          <div class="flex gap-1">
+            <button id="btnPrev" onclick="paginar(-1)"
+              class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 transition disabled:opacity-40" disabled>‹</button>
+            <span id="paginaInfo" class="px-2 py-1">1 / 1</span>
+            <button id="btnNext" onclick="paginar(1)"
+              class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 transition disabled:opacity-40" disabled>›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div id="tabelaSkeleton" class="p-5 space-y-2">
+        <div class="skeleton h-8 rounded-lg w-full"></div>
+        <div class="skeleton h-8 rounded-lg w-full opacity-80"></div>
+        <div class="skeleton h-8 rounded-lg w-full opacity-60"></div>
+        <div class="skeleton h-8 rounded-lg w-full opacity-40"></div>
+      </div>
+
+      <!-- Tabela -->
+      <div id="tabelaWrap" class="hidden overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-slate-50 text-xs text-slate-500 font-semibold uppercase tracking-wide">
+              <th class="px-5 py-3 text-left cursor-pointer hover:text-brand-600 select-none"
+                  onclick="ordenar('data')">
+                Data <span id="sortData"></span>
+              </th>
+              <th id="colProfHeader" class="hidden px-5 py-3 text-left cursor-pointer hover:text-brand-600 select-none"
+                  onclick="ordenar('profissional')">
+                Profissional <span id="sortProfissional"></span>
+              </th>
+              <th class="px-5 py-3 text-left cursor-pointer hover:text-brand-600 select-none"
+                  onclick="ordenar('paciente')">
+                Paciente <span id="sortPaciente"></span>
+              </th>
+              <th class="px-5 py-3 text-right cursor-pointer hover:text-brand-600 select-none"
+                  onclick="ordenar('valor')">
+                Valor <span id="sortValor"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="tabelaBody" class="divide-y divide-slate-50"></tbody>
+          <tfoot id="tabelaFoot" class="border-t border-slate-200 font-semibold bg-slate-50"></tfoot>
+        </table>
+      </div>
+
+      <!-- Empty state -->
+      <div id="tabelaEmpty" class="hidden p-12 text-center">
+        <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
+               M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <p class="text-slate-400 text-sm">Nenhum atendimento encontrado para os filtros selecionados.</p>
+        <button onclick="limparFiltros()"
+          class="mt-3 text-brand-600 text-xs font-medium hover:underline">Limpar filtros</button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="text-center py-4 text-xs text-slate-400 border-t border-slate-100 bg-white">
+    Dashboard da Clínica &mdash; Sistema financeiro e operacional
+  </footer>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden max-w-xs bg-slate-800 text-white text-sm
+     font-medium px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 fade-in">
+  <span id="toastMsg"></span>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ESTILOS INLINE (Tailwind @apply não disponível via CDN sem build)
+══════════════════════════════════════════ -->
+<style>
+  .label-filtro { display:block; font-size:.75rem; font-weight:500; color:#64748b; margin-bottom:.375rem; }
+  .input-filtro  {
+    display:block; width:100%; padding:.5rem .75rem;
+    border:1px solid #e2e8f0; border-radius:.75rem;
+    font-size:.875rem; color:#1e293b; background:#f8fafc;
+    transition: border-color .15s, box-shadow .15s;
+  }
+</style>
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
+<script>
+// ─────────────────────────────────────────
+//  CONFIGURAÇÃO — substitua pela URL do seu Web App GAS
+// ─────────────────────────────────────────
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxGwSb9KuSMHu8KN-p9-2t9YovwOo9pcxygi_HzNgayLXzxP33E9FPJ75sKmdadtUor/exec";
+
+// ─────────────────────────────────────────
+//  ESTADO GLOBAL
+// ─────────────────────────────────────────
+let state = {
+  credencial:   "",
+  isEmail:      false,
+  usuario:      null,        // { nome, tipo }
+  dados:        null,        // último resultado da API
+  registrosFilt: [],         // registros exibidos
+  pagina:       1,
+  porPagina:    20,
+  sortCol:      "data",
+  sortDir:      "desc",
+  chartMes:     null,
+  chartSec:     null,
+};
+
+// ─────────────────────────────────────────
+//  UTILITÁRIOS
+// ─────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+
+function moeda(v) {
+  return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+function dataFormatada(str) {
+  if (!str) return "—";
+  const [y, m, d] = str.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function showToast(msg, tipo = "info") {
+  const t = $("toast");
+  const colors = { info:"bg-slate-800", ok:"bg-emerald-700", erro:"bg-red-700" };
+  t.className = `fixed bottom-6 right-6 z-50 max-w-xs text-white text-sm font-medium
+    px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 fade-in ${colors[tipo] || colors.info}`;
+  $("toastMsg").textContent = msg;
+  t.classList.remove("hidden");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.add("hidden"), 3500);
+}
+
+function setLoading(on) {
+  $("tabelaSkeleton").classList.toggle("hidden", !on);
+  $("tabelaWrap").classList.toggle("hidden", on);
+  $("tabelaEmpty").classList.add("hidden");
+}
+
+// ─────────────────────────────────────────
+//  LOGIN
+// ─────────────────────────────────────────
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const cred = $("credencial").value.trim();
+  if (!cred) { mostrarErroLogin("Por favor, informe seu e-mail ou token."); return; }
+
+  // UI loading
+  $("btnLoginTxt").textContent = "Verificando…";
+  $("btnLoginSpinner").classList.remove("hidden");
+  $("btnLogin").disabled = true;
+  $("loginErro").classList.add("hidden");
+
+  // Detecta se é email ou token
+  const isEmail = cred.includes("@");
+  const params  = isEmail ? `email=${encodeURIComponent(cred)}` : `token=${encodeURIComponent(cred)}`;
+
+  try {
+    const res  = await fetch(`${GAS_URL}?action=dashboard&${params}`);
+    const json = await res.json();
+
+    if (!json.ok) {
+      mostrarErroLogin(json.erro || "Credenciais inválidas.");
+      return;
+    }
+
+    // Salva estado
+    state.credencial = cred;
+    state.isEmail    = isEmail;
+    state.usuario    = json.usuario;
+
+    // Inicializa dashboard
+    iniciarDashboard(json);
+
+  } catch (err) {
+    mostrarErroLogin("Erro ao conectar. Verifique a URL do Web App.");
+  } finally {
+    $("btnLoginTxt").textContent = "Entrar";
+    $("btnLoginSpinner").classList.add("hidden");
+    $("btnLogin").disabled = false;
+  }
+});
+
+function mostrarErroLogin(msg) {
+  $("loginErroMsg").textContent = msg;
+  $("loginErro").classList.remove("hidden");
+}
+
+// ─────────────────────────────────────────
+//  INICIALIZAR DASHBOARD
+// ─────────────────────────────────────────
+function iniciarDashboard(json) {
+  $("loginScreen").classList.add("hidden");
+  $("dashboardScreen").classList.remove("hidden");
+
+  const u = json.usuario;
+
+  // Header
+  $("headerNome").textContent  = u.nome;
+  $("headerTipo").textContent  = u.tipo === "admin" ? "Administrador" : "Profissional";
+  $("headerAvatar").textContent = u.nome.charAt(0).toUpperCase();
+  $("headerSubtitle").textContent = u.tipo === "admin"
+    ? "Visão geral de todos os profissionais"
+    : `Bem-vindo(a), ${u.nome}`;
+
+  // Filtro de profissional só para admin
+  if (u.tipo === "admin") {
+    $("filtProfWrap").classList.remove("hidden");
+    $("colProfHeader").classList.remove("hidden");
+    carregarProfissionais();
+  }
+
+  // Preenche dropdowns de mês/ano
+  preencherMesAno();
+
+  // Renderiza com dados iniciais
+  renderizarDados(json);
+}
+
+async function carregarProfissionais() {
+  const params = state.isEmail
+    ? `email=${encodeURIComponent(state.credencial)}`
+    : `token=${encodeURIComponent(state.credencial)}`;
+  try {
+    const res  = await fetch(`${GAS_URL}?action=profissionais&${params}`);
+    const json = await res.json();
+    if (json.ok && json.profissionais) {
+      const sel = $("filtProfissional");
+      json.profissionais.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value       = p.profissional;
+        opt.textContent = p.profissional;
+        sel.appendChild(opt);
+      });
+    }
+  } catch (_) {}
+}
+
+function preencherMesAno() {
+  const meses = [
+    ["", "Todos os meses"],
+    ["1","Janeiro"],["2","Fevereiro"],["3","Março"],["4","Abril"],
+    ["5","Maio"],["6","Junho"],["7","Julho"],["8","Agosto"],
+    ["9","Setembro"],["10","Outubro"],["11","Novembro"],["12","Dezembro"]
+  ];
+  const selMes = $("filtMes");
+  meses.forEach(([v, l]) => {
+    const o = document.createElement("option"); o.value = v; o.textContent = l; selMes.appendChild(o);
+  });
+
+  const ano     = new Date().getFullYear();
+  const selAno  = $("filtAno");
+  const oAll    = document.createElement("option"); oAll.value = ""; oAll.textContent = "Todos os anos";
+  selAno.appendChild(oAll);
+  for (let y = ano; y >= ano - 5; y--) {
+    const o = document.createElement("option"); o.value = y; o.textContent = y; selAno.appendChild(o);
+  }
+}
+
+// ─────────────────────────────────────────
+//  BUSCAR (filtrar via API)
+// ─────────────────────────────────────────
+async function buscar() {
+  const params = new URLSearchParams();
+  const credKey = state.isEmail ? "email" : "token";
+  params.set(credKey, state.credencial);
+  params.set("action", "dashboard");
+
+  const mes        = $("filtMes").value;
+  const ano        = $("filtAno").value;
+  const dataInicio = $("filtDataInicio").value;
+  const dataFim    = $("filtDataFim").value;
+  const paciente   = $("filtPaciente").value.trim();
+  const profissional = $("filtProfissional") ? $("filtProfissional").value : "";
+
+  if (mes && ano) { params.set("mes", mes); params.set("ano", ano); }
+  if (dataInicio)  params.set("dataInicio", dataInicio);
+  if (dataFim)     params.set("dataFim", dataFim);
+  if (paciente)    params.set("paciente", paciente);
+  if (profissional) params.set("profissional", profissional);
+
+  setLoading(true);
+  try {
+    const res  = await fetch(`${GAS_URL}?${params.toString()}`);
+    const json = await res.json();
+    if (!json.ok) { showToast(json.erro || "Erro ao buscar dados.", "erro"); return; }
+    renderizarDados(json);
+  } catch (err) {
+    showToast("Erro de conexão com o servidor.", "erro");
+  } finally {
+    setLoading(false);
+  }
+}
+
+function limparFiltros() {
+  $("filtMes").value        = "";
+  $("filtAno").value        = "";
+  $("filtDataInicio").value = "";
+  $("filtDataFim").value    = "";
+  $("filtPaciente").value   = "";
+  if ($("filtProfissional")) $("filtProfissional").value = "";
+  buscar();
+}
+
+// ─────────────────────────────────────────
+//  RENDERIZAR DADOS
+// ─────────────────────────────────────────
+function renderizarDados(json) {
+  state.dados          = json;
+  state.registrosFilt  = [...(json.registros || [])];
+  state.pagina         = 1;
+
+  // ── KPIs ──
+  const total   = json.totalGeral || 0;
+  const count   = json.totalRegistros || 0;
+  const ticket  = count > 0 ? total / count : 0;
+
+  $("kpiTotalPeriodo").textContent = moeda(total);
+  $("kpiTotalGeral").textContent   = moeda(total);
+  $("kpiAtendimentos").textContent = count;
+  $("kpiTicket").textContent       = moeda(ticket);
+  $("kpiTotalPeriodoSub").textContent = `${count} atendimento${count !== 1 ? "s" : ""}`;
+
+  // ── Tabela ──
+  aplicarOrdenacao();
+  renderizarTabela();
+
+  // ── Gráficos ──
+  renderizarGraficoMes(json.porMes || {});
+  renderizarGraficoSec(json);
+
+  setLoading(false);
+}
+
+// ─────────────────────────────────────────
+//  TABELA
+// ─────────────────────────────────────────
+function renderizarTabela() {
+  const regs     = state.registrosFilt;
+  const total    = regs.length;
+  const pp       = state.porPagina;
+  const totalPag = Math.max(1, Math.ceil(total / pp));
+  const p        = Math.min(state.pagina, totalPag);
+  state.pagina   = p;
+
+  $("tabelaCount").textContent = `${total} registro${total !== 1 ? "s" : ""}`;
+  $("paginaInfo").textContent  = `${p} / ${totalPag}`;
+  $("btnPrev").disabled        = p <= 1;
+  $("btnNext").disabled        = p >= totalPag;
+
+  if (total === 0) {
+    $("tabelaWrap").classList.add("hidden");
+    $("tabelaEmpty").classList.remove("hidden");
+    $("tabelaFoot").innerHTML = "";
+    return;
+  }
+
+  $("tabelaWrap").classList.remove("hidden");
+  $("tabelaEmpty").classList.add("hidden");
+
+  const fatia  = regs.slice((p - 1) * pp, p * pp);
+  const isAdmin = state.usuario && state.usuario.tipo === "admin";
+  const body   = $("tabelaBody");
+
+  body.innerHTML = fatia.map((r, i) => `
+    <tr class="${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}">
+      <td class="px-5 py-3 text-slate-600 whitespace-nowrap">${dataFormatada(r.data)}</td>
+      ${isAdmin ? `<td class="px-5 py-3 text-slate-700 font-medium">${esc(r.profissional)}</td>` : ""}
+      <td class="px-5 py-3 text-slate-800">${esc(r.paciente)}</td>
+      <td class="px-5 py-3 text-right font-semibold text-brand-700 whitespace-nowrap">${moeda(r.valor)}</td>
+    </tr>
+  `).join("");
+
+  // Rodapé com subtotal da página
+  const subtotal = fatia.reduce((a, r) => a + r.valor, 0);
+  const total_   = regs.reduce((a, r) => a + r.valor, 0);
+  $("tabelaFoot").innerHTML = `
+    <tr>
+      <td colspan="${isAdmin ? 2 : 1}" class="px-5 py-3 text-xs text-slate-400">
+        Subtotal da página
+      </td>
+      <td class="px-5 py-3 text-right font-semibold text-slate-600">${moeda(subtotal)}</td>
+      <td class="px-5 py-3 text-right font-bold text-brand-700 whitespace-nowrap">Total: ${moeda(total_)}</td>
+    </tr>
+  `;
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function paginar(dir) {
+  state.pagina += dir;
+  renderizarTabela();
+  document.querySelector("#dashboardScreen main").scrollTop = 0;
+}
+
+// ─────────────────────────────────────────
+//  ORDENAÇÃO
+// ─────────────────────────────────────────
+function ordenar(col) {
+  if (state.sortCol === col) {
+    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+  } else {
+    state.sortCol = col;
+    state.sortDir = "asc";
+  }
+  aplicarOrdenacao();
+  renderizarTabela();
+  atualizarIconesSort();
+}
+
+function aplicarOrdenacao() {
+  const { sortCol, sortDir } = state;
+  state.registrosFilt.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (sortCol === "valor") { va = +va; vb = +vb; }
+    else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+}
+
+function atualizarIconesSort() {
+  ["data","profissional","paciente","valor"].forEach(c => {
+    const el = $("sort" + c.charAt(0).toUpperCase() + c.slice(1));
+    if (!el) return;
+    el.textContent = state.sortCol === c ? (state.sortDir === "asc" ? " ▲" : " ▼") : "";
+  });
+}
+
+// ─────────────────────────────────────────
+//  GRÁFICO — Barras por Mês
+// ─────────────────────────────────────────
+function renderizarGraficoMes(porMes) {
+  const canvas = $("chartMes");
+  const empty  = $("chartMesEmpty");
+
+  const chaves = Object.keys(porMes).sort();
+  if (chaves.length === 0) {
+    canvas.style.display = "none";
+    empty.classList.remove("hidden");
+    if (state.chartMes) { state.chartMes.destroy(); state.chartMes = null; }
+    return;
+  }
+
+  canvas.style.display = "";
+  empty.classList.add("hidden");
+
+  const labels = chaves.map(k => {
+    const [y, m] = k.split("-");
+    const nomes  = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    return nomes[parseInt(m)] + "/" + y.slice(2);
+  });
+  const valores = chaves.map(k => porMes[k]);
+
+  if (state.chartMes) state.chartMes.destroy();
+
+  state.chartMes = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Faturamento (R$)",
+        data: valores,
+        backgroundColor: "rgba(37,99,235,.75)",
+        borderColor:     "rgba(37,99,235,1)",
+        borderWidth: 1.5,
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => " " + moeda(ctx.parsed.y)
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => "R$ " + v.toLocaleString("pt-BR"), font: { size: 11 } },
+          grid: { color: "#f1f5f9" }
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────
+//  GRÁFICO SECUNDÁRIO — Profissional (admin) ou Evolução (user)
+// ─────────────────────────────────────────
+function renderizarGraficoSec(json) {
+  const canvas = $("chartSec");
+  const empty  = $("chartSecEmpty");
+  const isAdmin = state.usuario && state.usuario.tipo === "admin";
+
+  let labels, valores, tipo, title, badge;
+
+  if (isAdmin && json.porProfissional && Object.keys(json.porProfissional).length > 0) {
+    const pp = json.porProfissional;
+    labels  = Object.keys(pp);
+    valores = labels.map(k => pp[k]);
+    tipo    = "doughnut";
+    title   = "Por profissional";
+    badge   = "Rosca";
+  } else {
+    // Usuário: linha de evolução mensal
+    const pm = json.porMes || {};
+    const ch = Object.keys(pm).sort();
+    if (ch.length === 0) {
+      canvas.style.display = "none";
+      empty.classList.remove("hidden");
+      if (state.chartSec) { state.chartSec.destroy(); state.chartSec = null; }
+      return;
+    }
+    labels  = ch.map(k => { const [y,m]=k.split("-"); const n=["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]; return n[parseInt(m)]+"/"+y.slice(2); });
+    valores = ch.map(k => pm[k]);
+    tipo    = "line";
+    title   = "Evolução mensal";
+    badge   = "Linha";
+  }
+
+  canvas.style.display = "";
+  empty.classList.add("hidden");
+  $("chartSecTitle").textContent = title;
+  $("chartSecBadge").textContent = badge;
+
+  const cores = [
+    "#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6",
+    "#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"
+  ];
+
+  if (state.chartSec) state.chartSec.destroy();
+
+  const cfg = tipo === "doughnut"
+    ? {
+        type: "doughnut",
+        data: {
+          labels,
+          datasets: [{ data: valores, backgroundColor: cores.slice(0, labels.length),
+            borderWidth: 2, borderColor: "#fff", hoverOffset: 8 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position:"right", labels: { font:{size:11}, padding:12 } },
+            tooltip: { callbacks: { label: ctx => " " + moeda(ctx.parsed) } }
+          }
+        }
+      }
+    : {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Faturamento",
+            data: valores,
+            borderColor: "#3b82f6",
+            backgroundColor: "rgba(59,130,246,.08)",
+            tension: .4, fill: true, pointRadius: 4,
+            pointBackgroundColor: "#3b82f6"
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => " " + moeda(ctx.parsed.y) } }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: v => "R$ " + v.toLocaleString("pt-BR"), font:{size:11} }, grid:{color:"#f1f5f9"} },
+            x: { grid:{display:false}, ticks:{font:{size:11}} }
+          }
+        }
+      };
+
+  state.chartSec = new Chart(canvas, cfg);
+}
+
+// ─────────────────────────────────────────
+//  EXPORTAR CSV
+// ─────────────────────────────────────────
+function exportarCSV() {
+  const regs    = state.registrosFilt;
+  const isAdmin = state.usuario && state.usuario.tipo === "admin";
+  if (!regs.length) { showToast("Nenhum dado para exportar.", "erro"); return; }
+
+  const cols = isAdmin
+    ? ["Data","Profissional","Paciente","Valor"]
+    : ["Data","Paciente","Valor"];
+
+  const linhas = [cols.join(";")];
+  regs.forEach(r => {
+    const row = isAdmin
+      ? [dataFormatada(r.data), r.profissional, r.paciente, r.valor.toFixed(2).replace(".", ",")]
+      : [dataFormatada(r.data), r.paciente, r.valor.toFixed(2).replace(".", ",")];
+    linhas.push(row.map(c => `"${c}"`).join(";"));
+  });
+
+  const blob = new Blob(["\uFEFF" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url;
+  a.download = `atendimentos_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("CSV exportado com sucesso!", "ok");
+}
+
+// ─────────────────────────────────────────
+//  LOGOUT
+// ─────────────────────────────────────────
+function logout() {
+  state = { credencial:"", isEmail:false, usuario:null, dados:null,
+    registrosFilt:[], pagina:1, porPagina:20, sortCol:"data", sortDir:"desc",
+    chartMes:null, chartSec:null };
+  $("credencial").value = "";
+  $("loginErro").classList.add("hidden");
+  $("dashboardScreen").classList.add("hidden");
+  $("loginScreen").classList.remove("hidden");
+  // Limpa dropdowns
+  const selMes = $("filtMes"), selAno = $("filtAno"), selProf = $("filtProfissional");
+  if (selMes) selMes.innerHTML = "";
+  if (selAno) selAno.innerHTML = "";
+  if (selProf) selProf.innerHTML = "<option value=''>Todos</option>";
+}
+
+// ─────────────────────────────────────────
+//  TECLA ENTER nos filtros → buscar
+// ─────────────────────────────────────────
+["filtPaciente","filtDataInicio","filtDataFim"].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") buscar(); });
+});
+</script>
+
+<script src="https://static-s3.skyworkcdn.com/fe/skywork-site-assets/scripts/embed_website.min.js"></script>
+<script async src="https://static-us-img.skywork.ai/prod/website_script/websiteBadge.js?v=3"></script>
+<script async src="https://static-us-img.skywork.ai/prod/website_script/websiteTrack.js?v=3"></script>
+</body>
+</html>
