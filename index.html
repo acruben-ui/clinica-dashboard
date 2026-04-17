@@ -1,717 +1,522 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Clínica Dashboard</title>
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: { 50:'#f0f7ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 900:'#1e3a5f' }
-          },
-          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] }
-        }
-      }
-    }
-  </script>
-
-  <!-- Google Font Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-
-  <style>
-    /* ── Scrollbar fino ── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
-
-    /* ── Animações ── */
-    @keyframes fadeIn  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes spin    { to { transform: rotate(360deg); } }
-    .fade-in  { animation: fadeIn .35s ease forwards; }
-    .spin     { animation: spin .8s linear infinite; }
-
-    /* ── Gradiente do header ── */
-    .header-grad { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); }
-
-    /* ── Card hover ── */
-    .kpi-card { transition: transform .2s, box-shadow .2s; }
-    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(37,99,235,.15); }
-
-    /* ── Table row hover ── */
-    tbody tr { transition: background .15s; }
-    tbody tr:hover { background: #eff6ff !important; }
-
-    /* ── Input focus ── */
-    input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
-
-    /* ── Tooltip gráfico ── */
-    .chart-tooltip { font-family: Inter, sans-serif; }
-
-    /* ── Skeleton loader ── */
-    .skeleton { background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-    /* ── Badge tipo ── */
-    .badge-admin { background:#fef3c7; color:#92400e; }
-    .badge-user  { background:#d1fae5; color:#065f46; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Repasses da Clínica</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#f1f5f9}
+::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fade-up{animation:fadeUp .3s ease forwards}
+.spinner{animation:spin .8s linear infinite}
+.header-bg{background:linear-gradient(135deg,#0f2952 0%,#1d4ed8 100%)}
+.card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-hover{transition:transform .2s,box-shadow .2s}
+.card-hover:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(29,78,216,.12)}
+.badge-glosa{display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid #fde68a}
+.badge-normal{display:inline-flex;align-items:center;gap:4px;background:#d1fae5;color:#065f46;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+.lbl{display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.inp{width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;color:#1e293b;background:#f8fafc;transition:border .15s,box-shadow .15s}
+.inp:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.btn-primary{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;background:#1d4ed8;border:none;cursor:pointer;transition:background .15s}
+.btn-primary:hover{background:#1e40af}
+.btn-secondary{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:500;color:#475569;background:#f1f5f9;border:1.5px solid #e2e8f0;cursor:pointer;transition:background .15s}
+.btn-secondary:hover{background:#e2e8f0}
+.btn-glosa-off{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;color:#92400e;background:#fef3c7;border:1.5px solid #fde68a;cursor:pointer;transition:all .15s}
+.btn-glosa-on{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;color:#fff;background:#d97706;border:1.5px solid #d97706;cursor:pointer;transition:all .15s}
+.btn-csv{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;color:#065f46;background:#d1fae5;border:1.5px solid #a7f3d0;cursor:pointer;transition:background .15s;margin-left:auto}
+.btn-csv:hover{background:#a7f3d0}
+.skel{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200%;animation:skel 1.3s infinite}
+@keyframes skel{0%{background-position:200%}100%{background-position:-200%}}
+tbody tr:hover{background:#f0f7ff}
+th{cursor:pointer;user-select:none}
+th:hover{color:#1d4ed8}
+.kpi-green{border-left:4px solid #10b981}
+.kpi-amber{border-left:4px solid #f59e0b}
+.kpi-blue{border-left:4px solid #3b82f6}
+.kpi-slate{border-left:4px solid #94a3b8}
+</style>
 </head>
-<body class="bg-slate-50 font-sans min-h-screen">
+<body>
 
-<!-- ══════════════════════════════════════════
+<!-- ════════════════════════════════════════════
      TELA DE LOGIN
-══════════════════════════════════════════ -->
-<div id="loginScreen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-100 to-blue-50">
-  <div class="w-full max-w-md fade-in">
-
-    <!-- Logo / título -->
+════════════════════════════════════════════ -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center p-4" style="background:linear-gradient(135deg,#f0f4ff 0%,#e8f0fe 100%)">
+  <div class="w-full max-w-md fade-up">
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl header-grad shadow-lg mb-4">
-        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
-               M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2
-               m-6 9l2 2 4-4"/>
-        </svg>
+      <div class="inline-flex w-16 h-16 rounded-2xl items-center justify-center header-bg shadow-lg mb-4">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
       </div>
-      <h1 class="text-2xl font-bold text-slate-800">Dashboard da Clínica</h1>
-      <p class="text-slate-500 mt-1 text-sm">Acesse com seu e-mail ou token de acesso</p>
+      <h1 class="text-2xl font-bold text-slate-800">Repasses da Clínica</h1>
+      <p class="text-slate-500 text-sm mt-1">Acesse com seu e-mail ou código de acesso</p>
     </div>
-
-    <!-- Card de login -->
-    <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
-      <form id="loginForm" novalidate>
-
-        <!-- Campo credencial -->
+    <div class="card p-8">
+      <form id="loginForm">
         <div class="mb-5">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="credencial">
-            E-mail ou Token
-          </label>
+          <label class="lbl" for="credencial">E-mail ou Código de Acesso</label>
           <div class="relative">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12
-                     a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
-              </svg>
-            </span>
-            <input id="credencial" type="text" autocomplete="username"
-              placeholder="ex: joao@clinica.com ou ABC123"
-              class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800
-                     placeholder:text-slate-400 bg-slate-50 transition"/>
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            <input id="credencial" type="text" placeholder="seu@email.com ou código" class="inp pl-9" autocomplete="username"/>
           </div>
         </div>
-
-        <!-- Erro de login -->
-        <div id="loginErro" class="hidden mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl
-             text-sm text-red-700 flex items-center gap-2">
-          <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414
-              1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293
-              1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10
-              8.586 8.707 7.293z" clip-rule="evenodd"/>
-          </svg>
+        <div id="loginErro" class="hidden mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
           <span id="loginErroMsg">Credenciais inválidas.</span>
         </div>
-
-        <!-- Botão entrar -->
-        <button type="submit" id="btnLogin"
-          class="w-full py-2.5 px-6 rounded-xl text-sm font-semibold text-white header-grad
-                 hover:opacity-90 transition shadow-md flex items-center justify-center gap-2">
+        <button type="submit" id="btnLogin" class="btn-primary w-full justify-center py-3">
           <span id="btnLoginTxt">Entrar</span>
-          <svg id="btnLoginSpinner" class="hidden w-4 h-4 spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25 stroke-white"/>
-            <path d="M4 12a8 8 0 018-8" stroke-width="4" class="stroke-white"/>
-          </svg>
+          <svg id="btnLoginSpin" class="hidden w-4 h-4 spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"/><path d="M4 12a8 8 0 018-8" stroke-width="4"/></svg>
         </button>
-
       </form>
-
-      <p class="mt-6 text-center text-xs text-slate-400">
-        Em caso de dúvidas, contate o administrador da clínica.
-      </p>
+      <p class="text-center text-xs text-slate-400 mt-5">Dúvidas? Contate o administrador da clínica.</p>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     DASHBOARD PRINCIPAL
-══════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════
+     DASHBOARD
+════════════════════════════════════════════ -->
 <div id="dashboardScreen" class="hidden min-h-screen flex flex-col">
 
-  <!-- ── HEADER ── -->
-  <header class="header-grad text-white shadow-lg sticky top-0 z-40">
+  <!-- HEADER -->
+  <header class="header-bg text-white shadow-md sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-      <!-- Logo -->
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
-                 M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2
-                 m-6 9l2 2 4-4"/>
-          </svg>
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
         </div>
         <div>
-          <h1 class="font-bold text-sm sm:text-base leading-tight">Dashboard da Clínica</h1>
-          <p class="text-blue-200 text-xs leading-tight" id="headerSubtitle">Carregando…</p>
+          <h1 class="font-bold text-sm sm:text-base leading-tight">Repasses da Clínica</h1>
+          <p class="text-blue-200 text-xs" id="headerSub">—</p>
         </div>
       </div>
-
-      <!-- Usuário + logout -->
       <div class="flex items-center gap-3">
         <div class="text-right hidden sm:block">
           <p class="text-xs font-semibold" id="headerNome">—</p>
           <p class="text-xs text-blue-200" id="headerTipo">—</p>
         </div>
-        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold" id="headerAvatar">—</div>
-        <button onclick="logout()"
-          class="text-xs bg-white/10 hover:bg-white/20 transition px-3 py-1.5 rounded-lg font-medium">
-          Sair
-        </button>
+        <div class="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center font-bold text-sm" id="headerAvatar">?</div>
+        <button onclick="logout()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition">Sair</button>
       </div>
     </div>
   </header>
 
-  <!-- ── CORPO ── -->
-  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
+  <!-- CORPO -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
 
-    <!-- ── FILTROS ── -->
-    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 fade-in">
-      <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-        <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0
-               01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
-        </svg>
-        Filtros
-      </h2>
-
+    <!-- FILTROS -->
+    <section class="card p-5 fade-up">
+      <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Filtros de Repasse</h2>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
 
-        <!-- Profissional (só admin) -->
-        <div id="filtProfWrap" class="hidden col-span-2 sm:col-span-1">
-          <label class="label-filtro">Profissional</label>
-          <select id="filtProfissional" class="input-filtro">
+        <!-- Mês de Repasse -->
+        <div>
+          <label class="lbl">Mês de Repasse</label>
+          <select id="filtMes" class="inp">
+            <option value="">Todos os meses</option>
+          </select>
+        </div>
+
+        <!-- Ano de Repasse -->
+        <div>
+          <label class="lbl">Ano de Repasse</label>
+          <select id="filtAno" class="inp">
+            <option value="">Todos os anos</option>
+          </select>
+        </div>
+
+        <!-- Profissional (admin) -->
+        <div id="filtProfWrap" class="hidden">
+          <label class="lbl">Profissional</label>
+          <select id="filtProfissional" class="inp">
             <option value="">Todos</option>
           </select>
         </div>
 
-        <!-- Mês -->
-        <div>
-          <label class="label-filtro">Mês</label>
-          <select id="filtMes" class="input-filtro"></select>
-        </div>
-
-        <!-- Ano -->
-        <div>
-          <label class="label-filtro">Ano</label>
-          <select id="filtAno" class="input-filtro"></select>
-        </div>
-
-        <!-- Data início -->
-        <div>
-          <label class="label-filtro">Data início</label>
-          <input id="filtDataInicio" type="date" class="input-filtro" />
-        </div>
-
-        <!-- Data fim -->
-        <div>
-          <label class="label-filtro">Data fim</label>
-          <input id="filtDataFim" type="date" class="input-filtro" />
-        </div>
-
         <!-- Paciente -->
         <div class="col-span-2 sm:col-span-1">
-          <label class="label-filtro">Paciente</label>
-          <input id="filtPaciente" type="text" placeholder="Buscar paciente…" class="input-filtro" />
+          <label class="lbl">Paciente</label>
+          <input id="filtPaciente" type="text" placeholder="Buscar paciente..." class="inp"/>
         </div>
 
       </div>
 
       <!-- Botões -->
-      <div class="flex flex-wrap gap-2 mt-4">
-        <button onclick="buscar()"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white
-                 bg-brand-600 hover:bg-brand-700 transition shadow-sm">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
+      <div class="flex flex-wrap items-center gap-2 mt-4">
+        <button onclick="buscar()" class="btn-primary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           Aplicar filtros
         </button>
-        <button onclick="limparFiltros()"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-slate-600
-                 bg-slate-100 hover:bg-slate-200 transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+        <button onclick="limparFiltros()" class="btn-secondary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           Limpar
         </button>
-        <button onclick="exportarCSV()"
-          class="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
-                 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition border border-emerald-200">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
+        <button id="btnGlosa" onclick="toggleGlosa()" class="btn-glosa-off">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          Ver apenas Glosas
+        </button>
+        <button onclick="exportarCSV()" class="btn-csv">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           Exportar CSV
         </button>
       </div>
     </section>
 
-    <!-- ── KPI CARDS ── -->
-    <section id="kpiSection" class="grid grid-cols-2 lg:grid-cols-4 gap-4 fade-in">
-      <div class="kpi-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <p class="text-xs font-medium text-slate-500 mb-1">Total do período</p>
-        <p id="kpiTotalPeriodo" class="text-2xl font-bold text-slate-800">R$ —</p>
-        <p class="text-xs text-slate-400 mt-1" id="kpiTotalPeriodoSub">—</p>
+    <!-- KPI CARDS -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 fade-up">
+      <div class="card card-hover kpi-green p-5">
+        <p class="text-xs font-semibold text-slate-500 mb-1">Total do Repasse</p>
+        <p id="kpiTotal" class="text-2xl font-bold text-emerald-700">R$ —</p>
+        <p id="kpiTotalSub" class="text-xs text-slate-400 mt-1">—</p>
       </div>
-      <div class="kpi-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <p class="text-xs font-medium text-slate-500 mb-1">Total geral</p>
-        <p id="kpiTotalGeral" class="text-2xl font-bold text-brand-600">R$ —</p>
-        <p class="text-xs text-slate-400 mt-1">Todos os registros</p>
+      <div class="card card-hover kpi-amber p-5">
+        <p class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+          <svg class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+          Valor de Glosa
+        </p>
+        <p id="kpiGlosa" class="text-2xl font-bold text-amber-600">R$ —</p>
+        <p id="kpiGlosaSub" class="text-xs text-slate-400 mt-1">Pagamentos atrasados</p>
       </div>
-      <div class="kpi-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <p class="text-xs font-medium text-slate-500 mb-1">Atendimentos</p>
-        <p id="kpiAtendimentos" class="text-2xl font-bold text-slate-800">—</p>
+      <div class="card card-hover kpi-blue p-5">
+        <p class="text-xs font-semibold text-slate-500 mb-1">Atendimentos</p>
+        <p id="kpiCount" class="text-2xl font-bold text-blue-700">—</p>
         <p class="text-xs text-slate-400 mt-1">No período filtrado</p>
       </div>
-      <div class="kpi-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <p class="text-xs font-medium text-slate-500 mb-1">Ticket médio</p>
-        <p id="kpiTicket" class="text-2xl font-bold text-slate-800">R$ —</p>
+      <div class="card card-hover kpi-slate p-5">
+        <p class="text-xs font-semibold text-slate-500 mb-1">Ticket Médio</p>
+        <p id="kpiTicket" class="text-2xl font-bold text-slate-700">R$ —</p>
         <p class="text-xs text-slate-400 mt-1">Por atendimento</p>
       </div>
     </section>
 
-    <!-- ── GRÁFICOS ── -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-5 fade-in">
-
-      <!-- Gráfico de barras (por mês) -->
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+    <!-- GRÁFICOS -->
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-5 fade-up">
+      <!-- Histórico de repasses (ocupa 3/5) -->
+      <div class="card p-5 lg:col-span-3">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-semibold text-slate-700">Faturamento por mês</h3>
-          <span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Barras</span>
+          <h3 class="text-sm font-semibold text-slate-700">Histórico de Repasses</h3>
+          <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">por mês</span>
         </div>
-        <div class="relative" style="height:220px">
-          <canvas id="chartMes"></canvas>
-          <div id="chartMesEmpty" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm hidden">
-            Sem dados para exibir
-          </div>
+        <div style="height:220px;position:relative">
+          <canvas id="chartRepasse"></canvas>
+          <div id="chartRepasseEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
       </div>
-
-      <!-- Gráfico de pizza/barras (por profissional — admin) / linha mensal (user) -->
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <!-- Por profissional / glosa breakdown (ocupa 2/5) -->
+      <div class="card p-5 lg:col-span-2">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-semibold text-slate-700" id="chartSecTitle">Por profissional</h3>
-          <span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full" id="chartSecBadge">Rosca</span>
+          <h3 class="text-sm font-semibold text-slate-700" id="chartSecTitulo">Por Profissional</h3>
+          <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full" id="chartSecBadge">Rosca</span>
         </div>
-        <div class="relative" style="height:220px">
+        <div style="height:220px;position:relative">
           <canvas id="chartSec"></canvas>
-          <div id="chartSecEmpty" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm hidden">
-            Sem dados para exibir
-          </div>
+          <div id="chartSecEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
       </div>
-
     </section>
 
-    <!-- ── TABELA DE ATENDIMENTOS ── -->
-    <section class="bg-white rounded-2xl border border-slate-100 shadow-sm fade-in overflow-hidden">
-
-      <!-- Cabeçalho da tabela -->
+    <!-- TABELA DE REPASSES -->
+    <section class="card fade-up overflow-hidden">
       <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-        <h3 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
-                 a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
-          Atendimentos
-        </h3>
+        <h3 class="text-sm font-semibold text-slate-700">Detalhamento de Repasses</h3>
         <div class="flex items-center gap-2 text-xs text-slate-500">
           <span id="tabelaCount">0 registros</span>
-          <div class="flex gap-1">
-            <button id="btnPrev" onclick="paginar(-1)"
-              class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 transition disabled:opacity-40" disabled>‹</button>
-            <span id="paginaInfo" class="px-2 py-1">1 / 1</span>
-            <button id="btnNext" onclick="paginar(1)"
-              class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 transition disabled:opacity-40" disabled>›</button>
-          </div>
+          <button id="btnPrev" onclick="paginar(-1)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40" disabled>‹</button>
+          <span id="paginaInfo">1/1</span>
+          <button id="btnNext" onclick="paginar(1)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40" disabled>›</button>
         </div>
       </div>
 
-      <!-- Loading skeleton -->
-      <div id="tabelaSkeleton" class="p-5 space-y-2">
-        <div class="skeleton h-8 rounded-lg w-full"></div>
-        <div class="skeleton h-8 rounded-lg w-full opacity-80"></div>
-        <div class="skeleton h-8 rounded-lg w-full opacity-60"></div>
-        <div class="skeleton h-8 rounded-lg w-full opacity-40"></div>
+      <!-- Skeleton -->
+      <div id="tabelaSkel" class="p-5 space-y-2">
+        <div class="skel h-8 rounded-lg w-full"></div>
+        <div class="skel h-8 rounded-lg w-full opacity-80"></div>
+        <div class="skel h-8 rounded-lg w-full opacity-60"></div>
+        <div class="skel h-8 rounded-lg w-full opacity-40"></div>
       </div>
 
-      <!-- Tabela -->
+      <!-- Tabela real -->
       <div id="tabelaWrap" class="hidden overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-slate-50 text-xs text-slate-500 font-semibold uppercase tracking-wide">
-              <th class="px-5 py-3 text-left cursor-pointer hover:text-brand-600 select-none"
-                  onclick="ordenar('data')">
-                Data <span id="sortData"></span>
-              </th>
-              <th id="colProfHeader" class="hidden px-5 py-3 text-left cursor-pointer hover:text-brand-600 select-none"
-                  onclick="ordenar('profissional')">
-                Profissional <span id="sortProfissional"></span>
-              </th>
-              <th class="px-5 py-3 text-left cursor-pointer hover:text-brand-600 select-none"
-                  onclick="ordenar('paciente')">
-                Paciente <span id="sortPaciente"></span>
-              </th>
-              <th class="px-5 py-3 text-right cursor-pointer hover:text-brand-600 select-none"
-                  onclick="ordenar('valor')">
-                Valor <span id="sortValor"></span>
-              </th>
+              <th class="px-4 py-3 text-left" onclick="ordenar('data')">Data Atend. <span id="sortdata"></span></th>
+              <th id="colProf" class="hidden px-4 py-3 text-left" onclick="ordenar('profissional')">Profissional <span id="sortprofissional"></span></th>
+              <th class="px-4 py-3 text-left" onclick="ordenar('paciente')">Paciente <span id="sortpaciente"></span></th>
+              <th class="px-4 py-3 text-left" onclick="ordenar('mesRepasse')">Repasse <span id="sortmesRepasse"></span></th>
+              <th class="px-4 py-3 text-right" onclick="ordenar('valor')">Valor <span id="sortvalor"></span></th>
+              <th class="px-4 py-3 text-center">Glosa</th>
             </tr>
           </thead>
           <tbody id="tabelaBody" class="divide-y divide-slate-50"></tbody>
-          <tfoot id="tabelaFoot" class="border-t border-slate-200 font-semibold bg-slate-50"></tfoot>
+          <tfoot id="tabelaFoot" class="border-t-2 border-slate-200 bg-slate-50 font-semibold"></tfoot>
         </table>
       </div>
 
-      <!-- Empty state -->
+      <!-- Empty -->
       <div id="tabelaEmpty" class="hidden p-12 text-center">
-        <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
-               M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-        </svg>
-        <p class="text-slate-400 text-sm">Nenhum atendimento encontrado para os filtros selecionados.</p>
-        <button onclick="limparFiltros()"
-          class="mt-3 text-brand-600 text-xs font-medium hover:underline">Limpar filtros</button>
+        <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <p class="text-slate-400 text-sm">Nenhum repasse encontrado para os filtros selecionados.</p>
+        <button onclick="limparFiltros()" class="mt-2 text-blue-600 text-xs font-medium hover:underline">Limpar filtros</button>
       </div>
-
     </section>
 
   </main>
-
-  <!-- FOOTER -->
   <footer class="text-center py-4 text-xs text-slate-400 border-t border-slate-100 bg-white">
-    Dashboard da Clínica &mdash; Sistema financeiro e operacional
+    Repasses da Clínica — sistema de controle financeiro por profissional
   </footer>
 </div>
 
 <!-- TOAST -->
-<div id="toast" class="fixed bottom-6 right-6 z-50 hidden max-w-xs bg-slate-800 text-white text-sm
-     font-medium px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 fade-in">
+<div id="toast" class="hidden fixed bottom-6 right-6 z-50 max-w-xs text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl flex items-center gap-2">
   <span id="toastMsg"></span>
 </div>
 
-<!-- ══════════════════════════════════════════
-     ESTILOS INLINE (Tailwind @apply não disponível via CDN sem build)
-══════════════════════════════════════════ -->
-<style>
-  .label-filtro { display:block; font-size:.75rem; font-weight:500; color:#64748b; margin-bottom:.375rem; }
-  .input-filtro  {
-    display:block; width:100%; padding:.5rem .75rem;
-    border:1px solid #e2e8f0; border-radius:.75rem;
-    font-size:.875rem; color:#1e293b; background:#f8fafc;
-    transition: border-color .15s, box-shadow .15s;
-  }
-</style>
-
-<!-- ══════════════════════════════════════════
-     JAVASCRIPT
-══════════════════════════════════════════ -->
 <script>
-// ─────────────────────────────────────────
-//  CONFIGURAÇÃO — substitua pela URL do seu Web App GAS
-// ─────────────────────────────────────────
+// ─── CONFIGURAÇÃO ───────────────────────────────────────────
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxGwSb9KuSMHu8KN-p9-2t9YovwOo9pcxygi_HzNgayLXzxP33E9FPJ75sKmdadtUor/exec";
 
-// ─────────────────────────────────────────
-//  ESTADO GLOBAL
-// ─────────────────────────────────────────
-let state = {
-  credencial:   "",
-  isEmail:      false,
-  usuario:      null,        // { nome, tipo }
-  dados:        null,        // último resultado da API
-  registrosFilt: [],         // registros exibidos
-  pagina:       1,
-  porPagina:    20,
-  sortCol:      "data",
-  sortDir:      "desc",
-  chartMes:     null,
-  chartSec:     null,
+// ─── ESTADO ─────────────────────────────────────────────────
+let S = {
+  cred:'', isEmail:false, usuario:null,
+  dados:null, regs:[], pagina:1, pp:20,
+  sortCol:'data', sortDir:'desc',
+  apenasGlosa:false,
+  chartR:null, chartS:null
 };
 
-// ─────────────────────────────────────────
-//  UTILITÁRIOS
-// ─────────────────────────────────────────
-const $ = (id) => document.getElementById(id);
+// ─── UTILS ──────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const br = v  => "R$ " + Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const dt = s  => { if(!s) return "—"; const [y,m,d]=s.split("-"); return d+"/"+m+"/"+y; };
 
-function moeda(v) {
-  return "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 });
-}
-
-function dataFormatada(str) {
-  if (!str) return "—";
-  const [y, m, d] = str.split("-");
-  return `${d}/${m}/${y}`;
-}
-
-function showToast(msg, tipo = "info") {
-  const t = $("toast");
-  const colors = { info:"bg-slate-800", ok:"bg-emerald-700", erro:"bg-red-700" };
-  t.className = `fixed bottom-6 right-6 z-50 max-w-xs text-white text-sm font-medium
-    px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 fade-in ${colors[tipo] || colors.info}`;
+function toast(msg, tipo) {
+  const el = $("toast");
+  const cls = tipo==="ok" ? "bg-emerald-700" : tipo==="warn" ? "bg-amber-600" : "bg-red-700";
+  el.className = "fixed bottom-6 right-6 z-50 max-w-xs text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 " + cls;
   $("toastMsg").textContent = msg;
-  t.classList.remove("hidden");
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.add("hidden"), 3500);
+  el.classList.remove("hidden");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add("hidden"), 3500);
 }
 
 function setLoading(on) {
-  $("tabelaSkeleton").classList.toggle("hidden", !on);
-  // [Bug 3 corrigido] Quando LIGANDO o loading: esconde tabela e estado vazio.
-  // Quando DESLIGANDO: NÃO forçamos a visibilidade aqui — renderizarTabela()
-  // decide o que mostrar (tabela com dados OU mensagem de sem dados).
+  $("tabelaSkel").classList.toggle("hidden", !on);
   if (on) {
     $("tabelaWrap").classList.add("hidden");
     $("tabelaEmpty").classList.add("hidden");
   }
 }
 
-// ─────────────────────────────────────────
-//  LOGIN
-// ─────────────────────────────────────────
-$("loginForm").addEventListener("submit", async (e) => {
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ─── LOGIN ───────────────────────────────────────────────────
+$("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
   const cred = $("credencial").value.trim();
-  if (!cred) { mostrarErroLogin("Por favor, informe seu e-mail ou token."); return; }
+  if (!cred) { mostrarErroLogin("Informe seu e-mail ou código."); return; }
 
-  // UI loading
   $("btnLoginTxt").textContent = "Verificando…";
-  $("btnLoginSpinner").classList.remove("hidden");
+  $("btnLoginSpin").classList.remove("hidden");
   $("btnLogin").disabled = true;
   $("loginErro").classList.add("hidden");
 
-  // Detecta se é email ou token
   const isEmail = cred.includes("@");
-  const params  = isEmail ? `email=${encodeURIComponent(cred)}` : `token=${encodeURIComponent(cred)}`;
+  const p = isEmail ? "email="+encodeURIComponent(cred) : "token="+encodeURIComponent(cred);
 
+  let json = null;
   try {
-    // [Bug 1 corrigido] _t=timestamp impede que o GAS sirva resposta cacheada
-    const res  = await fetch(`${GAS_URL}?action=dashboard&${params}&_t=${Date.now()}`);
-    const json = await res.json();
-
-    if (!json.ok) {
-      mostrarErroLogin(json.erro || "Credenciais inválidas.");
-      return;
-    }
-
-    // Salva estado
-    state.credencial = cred;
-    state.isEmail    = isEmail;
-    state.usuario    = json.usuario;
-
-    // Inicializa dashboard
-    iniciarDashboard(json);
-
-  } catch (err) {
-    mostrarErroLogin("Erro ao conectar. Verifique a URL do Web App.");
-  } finally {
-    $("btnLoginTxt").textContent = "Entrar";
-    $("btnLoginSpinner").classList.add("hidden");
-    $("btnLogin").disabled = false;
+    const res = await fetch(GAS_URL + "?action=dashboard&" + p + "&_t=" + Date.now());
+    json = await res.json();
+  } catch(err) {
+    mostrarErroLogin("Erro de conexão. Verifique a URL do Web App.");
+    resetBtnLogin(); return;
   }
+
+  if (!json || !json.ok) {
+    mostrarErroLogin(json ? (json.erro || "Credenciais inválidas.") : "Resposta inválida.");
+    resetBtnLogin(); return;
+  }
+
+  S.cred = cred; S.isEmail = isEmail; S.usuario = json.usuario;
+  iniciarDashboard(json);
+  resetBtnLogin();
 });
 
 function mostrarErroLogin(msg) {
   $("loginErroMsg").textContent = msg;
   $("loginErro").classList.remove("hidden");
 }
+function resetBtnLogin() {
+  $("btnLoginTxt").textContent = "Entrar";
+  $("btnLoginSpin").classList.add("hidden");
+  $("btnLogin").disabled = false;
+}
 
-// ─────────────────────────────────────────
-//  INICIALIZAR DASHBOARD
-// ─────────────────────────────────────────
-function iniciarDashboard(json) {
+// ─── INICIALIZAR DASHBOARD ───────────────────────────────────
+async function iniciarDashboard(json) {
   $("loginScreen").classList.add("hidden");
   $("dashboardScreen").classList.remove("hidden");
 
   const u = json.usuario;
-
-  // Header
   $("headerNome").textContent  = u.nome;
   $("headerTipo").textContent  = u.tipo === "admin" ? "Administrador" : "Profissional";
   $("headerAvatar").textContent = u.nome.charAt(0).toUpperCase();
-  $("headerSubtitle").textContent = u.tipo === "admin"
-    ? "Visão geral de todos os profissionais"
-    : `Bem-vindo(a), ${u.nome}`;
+  $("headerSub").textContent   = u.tipo === "admin" ? "Visão geral de todos os profissionais" : "Bem-vindo(a), " + u.nome;
 
-  // Filtro de profissional só para admin
   if (u.tipo === "admin") {
     $("filtProfWrap").classList.remove("hidden");
-    $("colProfHeader").classList.remove("hidden");
+    $("colProf").classList.remove("hidden");
     carregarProfissionais();
   }
 
-  // Preenche dropdowns de mês/ano
-  preencherMesAno();
-
-  // Renderiza com dados iniciais
+  await carregarMeses();
+  carregarAnos();
   renderizarDados(json);
 }
 
-async function carregarProfissionais() {
-  const params = state.isEmail
-    ? `email=${encodeURIComponent(state.credencial)}`
-    : `token=${encodeURIComponent(state.credencial)}`;
+async function carregarMeses() {
+  const p = S.isEmail ? "email="+encodeURIComponent(S.cred) : "token="+encodeURIComponent(S.cred);
   try {
-    const res  = await fetch(`${GAS_URL}?action=profissionais&${params}&_t=${Date.now()}`);
+    const res  = await fetch(GAS_URL + "?action=meses&" + p + "&_t=" + Date.now());
+    const json = await res.json();
+    if (json.ok && json.meses) {
+      const sel = $("filtMes");
+      json.meses.forEach(m => {
+        const o = document.createElement("option");
+        o.value = m.valor;
+        o.textContent = m.mes + " " + m.ano;
+        sel.appendChild(o);
+      });
+    }
+  } catch(_) {}
+}
+
+function carregarAnos() {
+  const sel = $("filtAno");
+  const ano = new Date().getFullYear();
+  for (let y = ano; y >= ano - 5; y--) {
+    const o = document.createElement("option");
+    o.value = y; o.textContent = y; sel.appendChild(o);
+  }
+}
+
+async function carregarProfissionais() {
+  const p = S.isEmail ? "email="+encodeURIComponent(S.cred) : "token="+encodeURIComponent(S.cred);
+  try {
+    const res  = await fetch(GAS_URL + "?action=profissionais&" + p + "&_t=" + Date.now());
     const json = await res.json();
     if (json.ok && json.profissionais) {
       const sel = $("filtProfissional");
-      json.profissionais.forEach(p => {
-        const opt = document.createElement("option");
-        opt.value       = p.profissional;
-        opt.textContent = p.profissional;
-        sel.appendChild(opt);
+      json.profissionais.forEach(p2 => {
+        const o = document.createElement("option");
+        o.value = p2.profissional; o.textContent = p2.profissional; sel.appendChild(o);
       });
     }
-  } catch (_) {}
+  } catch(_) {}
 }
 
-function preencherMesAno() {
-  const meses = [
-    ["", "Todos os meses"],
-    ["1","Janeiro"],["2","Fevereiro"],["3","Março"],["4","Abril"],
-    ["5","Maio"],["6","Junho"],["7","Julho"],["8","Agosto"],
-    ["9","Setembro"],["10","Outubro"],["11","Novembro"],["12","Dezembro"]
-  ];
-  const selMes = $("filtMes");
-  meses.forEach(([v, l]) => {
-    const o = document.createElement("option"); o.value = v; o.textContent = l; selMes.appendChild(o);
-  });
-
-  const ano     = new Date().getFullYear();
-  const selAno  = $("filtAno");
-  const oAll    = document.createElement("option"); oAll.value = ""; oAll.textContent = "Todos os anos";
-  selAno.appendChild(oAll);
-  for (let y = ano; y >= ano - 5; y--) {
-    const o = document.createElement("option"); o.value = y; o.textContent = y; selAno.appendChild(o);
-  }
-}
-
-// ─────────────────────────────────────────
-//  BUSCAR (filtrar via API)
-// ─────────────────────────────────────────
+// ─── BUSCAR ──────────────────────────────────────────────────
 async function buscar() {
   const params = new URLSearchParams();
-  const credKey = state.isEmail ? "email" : "token";
-  params.set(credKey, state.credencial);
+  params.set(S.isEmail ? "email" : "token", S.cred);
   params.set("action", "dashboard");
-
-  const mes        = $("filtMes").value;
-  const ano        = $("filtAno").value;
-  const dataInicio = $("filtDataInicio").value;
-  const dataFim    = $("filtDataFim").value;
-  const paciente   = $("filtPaciente").value.trim();
-  const profissional = $("filtProfissional") ? $("filtProfissional").value : "";
-
-  // [Bug 2 corrigido] Mês e ano agora são enviados de forma independente.
-  // Antes: "if (mes && ano)" exigia os dois juntos — se só um fosse selecionado, nada era filtrado.
-  if (mes)  params.set("mes", mes);
-  if (ano)  params.set("ano", ano);
-  if (dataInicio)   params.set("dataInicio", dataInicio);
-  if (dataFim)      params.set("dataFim", dataFim);
-  if (paciente)     params.set("paciente", paciente);
-  if (profissional) params.set("profissional", profissional);
-
-  // [Bug 1 corrigido] Timestamp evita cache do GAS
   params.set("_t", Date.now());
 
+  const mes  = $("filtMes").value;
+  const ano  = $("filtAno").value;
+  const pac  = $("filtPaciente").value.trim();
+  const prof = $("filtProfissional") ? $("filtProfissional").value : "";
+
+  if (mes)  params.set("mesRepasse",  mes);
+  if (ano)  params.set("anoRepasse",  ano);
+  if (pac)  params.set("paciente",    pac);
+  if (prof) params.set("profissional", prof);
+  if (S.apenasGlosa) params.set("apenasGlosa", "sim");
+
   setLoading(true);
+
+  let json = null;
   try {
-    const res  = await fetch(`${GAS_URL}?${params.toString()}`);
-    const json = await res.json();
-    if (!json.ok) { showToast(json.erro || "Erro ao buscar dados.", "erro"); setLoading(false); return; }
-    renderizarDados(json);
-  } catch (err) {
-    showToast("Erro de conexão com o servidor.", "erro");
+    const res = await fetch(GAS_URL + "?" + params.toString());
+    json = await res.json();
+  } catch(err) {
+    toast("Erro de conexão com o servidor.", "erro");
     setLoading(false);
+    return;
   }
+
+  if (!json || !json.ok) {
+    toast(json ? (json.erro || "Erro ao buscar dados.") : "Resposta inválida.", "erro");
+    setLoading(false);
+    return;
+  }
+
+  renderizarDados(json);
 }
 
 function limparFiltros() {
-  $("filtMes").value        = "";
-  $("filtAno").value        = "";
-  $("filtDataInicio").value = "";
-  $("filtDataFim").value    = "";
-  $("filtPaciente").value   = "";
+  $("filtMes").value = "";
+  $("filtAno").value = "";
+  $("filtPaciente").value = "";
   if ($("filtProfissional")) $("filtProfissional").value = "";
+  if (S.apenasGlosa) toggleGlosa();
   buscar();
 }
 
-// ─────────────────────────────────────────
-//  RENDERIZAR DADOS
-// ─────────────────────────────────────────
+function toggleGlosa() {
+  S.apenasGlosa = !S.apenasGlosa;
+  const btn = $("btnGlosa");
+  if (S.apenasGlosa) {
+    btn.className = "btn-glosa-on";
+    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> Mostrando apenas Glosas';
+  } else {
+    btn.className = "btn-glosa-off";
+    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> Ver apenas Glosas';
+  }
+}
+
+// ─── RENDERIZAR ──────────────────────────────────────────────
 function renderizarDados(json) {
-  state.dados          = json;
-  state.registrosFilt  = [...(json.registros || [])];
-  state.pagina         = 1;
+  S.dados = json;
+  S.regs  = [...(json.registros || [])];
+  S.pagina = 1;
 
-  // ── KPIs ──
-  const total   = json.totalGeral || 0;
-  const count   = json.totalRegistros || 0;
-  const ticket  = count > 0 ? total / count : 0;
+  $("kpiTotal").textContent    = br(json.totalRepasse || 0);
+  $("kpiTotalSub").textContent = (json.totalAtendimentos || 0) + " atendimento" + (json.totalAtendimentos !== 1 ? "s" : "");
+  $("kpiGlosa").textContent    = br(json.totalGlosa || 0);
+  $("kpiGlosaSub").textContent = json.totalGlosa > 0 ? "Pagamentos recuperados de glosa" : "Sem glosas no período";
+  $("kpiCount").textContent    = json.totalAtendimentos || 0;
+  $("kpiTicket").textContent   = br(json.ticketMedio || 0);
 
-  $("kpiTotalPeriodo").textContent = moeda(total);
-  $("kpiTotalGeral").textContent   = moeda(total);
-  $("kpiAtendimentos").textContent = count;
-  $("kpiTicket").textContent       = moeda(ticket);
-  $("kpiTotalPeriodoSub").textContent = `${count} atendimento${count !== 1 ? "s" : ""}`;
-
-  // [Bug 3 corrigido] setLoading(false) vem ANTES de renderizarTabela().
-  // Antes: setLoading(false) vinha depois e sobrescrevia o estado vazio
-  // que renderizarTabela() tinha configurado, escondendo a mensagem "sem dados".
   setLoading(false);
-
-  // ── Tabela ──
   aplicarOrdenacao();
   renderizarTabela();
-
-  // ── Gráficos ──
-  renderizarGraficoMes(json.porMes || {});
+  renderizarGraficoRepasse(json.porMesRepasse || {});
   renderizarGraficoSec(json);
 }
 
-// ─────────────────────────────────────────
-//  TABELA
-// ─────────────────────────────────────────
+// ─── TABELA ──────────────────────────────────────────────────
 function renderizarTabela() {
-  const regs     = state.registrosFilt;
-  const total    = regs.length;
-  const pp       = state.porPagina;
-  const totalPag = Math.max(1, Math.ceil(total / pp));
-  const p        = Math.min(state.pagina, totalPag);
-  state.pagina   = p;
+  const total    = S.regs.length;
+  const totalPag = Math.max(1, Math.ceil(total / S.pp));
+  S.pagina = Math.min(S.pagina, totalPag);
 
-  $("tabelaCount").textContent = `${total} registro${total !== 1 ? "s" : ""}`;
-  $("paginaInfo").textContent  = `${p} / ${totalPag}`;
-  $("btnPrev").disabled        = p <= 1;
-  $("btnNext").disabled        = p >= totalPag;
+  $("tabelaCount").textContent = total + " registro" + (total !== 1 ? "s" : "");
+  $("paginaInfo").textContent  = S.pagina + "/" + totalPag;
+  $("btnPrev").disabled = S.pagina <= 1;
+  $("btnNext").disabled = S.pagina >= totalPag;
 
   if (total === 0) {
     $("tabelaWrap").classList.add("hidden");
@@ -723,287 +528,202 @@ function renderizarTabela() {
   $("tabelaWrap").classList.remove("hidden");
   $("tabelaEmpty").classList.add("hidden");
 
-  const fatia  = regs.slice((p - 1) * pp, p * pp);
-  const isAdmin = state.usuario && state.usuario.tipo === "admin";
-  const body   = $("tabelaBody");
+  const isAdmin = S.usuario && S.usuario.tipo === "admin";
+  const fatia   = S.regs.slice((S.pagina-1)*S.pp, S.pagina*S.pp);
 
-  body.innerHTML = fatia.map((r, i) => `
-    <tr class="${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}">
-      <td class="px-5 py-3 text-slate-600 whitespace-nowrap">${dataFormatada(r.data)}</td>
-      ${isAdmin ? `<td class="px-5 py-3 text-slate-700 font-medium">${esc(r.profissional)}</td>` : ""}
-      <td class="px-5 py-3 text-slate-800">${esc(r.paciente)}</td>
-      <td class="px-5 py-3 text-right font-semibold text-brand-700 whitespace-nowrap">${moeda(r.valor)}</td>
+  $("tabelaBody").innerHTML = fatia.map((r, i) => `
+    <tr class="${i%2===0?"bg-white":"bg-slate-50/40"}">
+      <td class="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">${dt(r.data)}</td>
+      ${isAdmin ? `<td class="px-4 py-3 font-medium text-slate-700">${esc(r.profissional)}</td>` : ""}
+      <td class="px-4 py-3 text-slate-800">${esc(r.paciente)}</td>
+      <td class="px-4 py-3 text-slate-600 whitespace-nowrap text-xs">${esc(r.mesRepasse)} ${r.anoRepasse}</td>
+      <td class="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">${br(r.valor)}</td>
+      <td class="px-4 py-3 text-center">
+        ${r.glosa
+          ? '<span class="badge-glosa"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>GLOSA</span>'
+          : '<span class="badge-normal">Normal</span>'}
+      </td>
     </tr>
   `).join("");
 
-  // Rodapé com subtotal da página
-  const subtotal = fatia.reduce((a, r) => a + r.valor, 0);
-  const total_   = regs.reduce((a, r) => a + r.valor, 0);
+  const sub   = fatia.reduce((a,r) => a+r.valor, 0);
+  const tot   = S.regs.reduce((a,r) => a+r.valor, 0);
+  const glTot = S.regs.filter(r=>r.glosa).reduce((a,r)=>a+r.valor,0);
   $("tabelaFoot").innerHTML = `
     <tr>
-      <td colspan="${isAdmin ? 2 : 1}" class="px-5 py-3 text-xs text-slate-400">
-        Subtotal da página
+      <td colspan="${isAdmin?3:2}" class="px-4 py-3 text-xs text-slate-400">
+        Subtotal da página — Total geral: <strong class="text-slate-700">${br(tot)}</strong>
+        ${glTot > 0 ? ` <span class="badge-glosa ml-2">Glosa: ${br(glTot)}</span>` : ""}
       </td>
-      <td class="px-5 py-3 text-right font-semibold text-slate-600">${moeda(subtotal)}</td>
-      <td class="px-5 py-3 text-right font-bold text-brand-700 whitespace-nowrap">Total: ${moeda(total_)}</td>
-    </tr>
-  `;
+      <td class="px-4 py-3 text-right text-slate-600">${br(sub)}</td>
+      <td></td><td></td>
+    </tr>`;
 }
 
-function esc(str) {
-  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
+function paginar(dir) { S.pagina += dir; renderizarTabela(); }
 
-function paginar(dir) {
-  state.pagina += dir;
-  renderizarTabela();
-  document.querySelector("#dashboardScreen main").scrollTop = 0;
-}
-
-// ─────────────────────────────────────────
-//  ORDENAÇÃO
-// ─────────────────────────────────────────
 function ordenar(col) {
-  if (state.sortCol === col) {
-    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-  } else {
-    state.sortCol = col;
-    state.sortDir = "asc";
-  }
+  if (S.sortCol === col) S.sortDir = S.sortDir==="asc"?"desc":"asc";
+  else { S.sortCol = col; S.sortDir = "asc"; }
   aplicarOrdenacao();
   renderizarTabela();
-  atualizarIconesSort();
+  ["data","profissional","paciente","mesRepasse","valor"].forEach(c => {
+    const el = $("sort"+c); if (el) el.textContent = S.sortCol===c ? (S.sortDir==="asc"?" ▲":" ▼") : "";
+  });
 }
 
 function aplicarOrdenacao() {
-  const { sortCol, sortDir } = state;
-  state.registrosFilt.sort((a, b) => {
+  const {sortCol, sortDir} = S;
+  S.regs.sort((a,b) => {
     let va = a[sortCol], vb = b[sortCol];
-    if (sortCol === "valor") { va = +va; vb = +vb; }
-    else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
-    if (va < vb) return sortDir === "asc" ? -1 : 1;
-    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    if (sortCol==="valor") { va=+va; vb=+vb; }
+    else { va=String(va||"").toLowerCase(); vb=String(vb||"").toLowerCase(); }
+    if (va<vb) return sortDir==="asc"?-1:1;
+    if (va>vb) return sortDir==="asc"?1:-1;
     return 0;
   });
 }
 
-function atualizarIconesSort() {
-  ["data","profissional","paciente","valor"].forEach(c => {
-    const el = $("sort" + c.charAt(0).toUpperCase() + c.slice(1));
-    if (!el) return;
-    el.textContent = state.sortCol === c ? (state.sortDir === "asc" ? " ▲" : " ▼") : "";
-  });
-}
+// ─── GRÁFICO — Histórico de Repasses ────────────────────────
+function renderizarGraficoRepasse(porMes) {
+  const canvas = $("chartRepasse");
+  const empty  = $("chartRepasseEmpty");
+  const chaves = Object.keys(porMes);
 
-// ─────────────────────────────────────────
-//  GRÁFICO — Barras por Mês
-// ─────────────────────────────────────────
-function renderizarGraficoMes(porMes) {
-  const canvas = $("chartMes");
-  const empty  = $("chartMesEmpty");
-
-  const chaves = Object.keys(porMes).sort();
   if (chaves.length === 0) {
-    canvas.style.display = "none";
-    empty.classList.remove("hidden");
-    if (state.chartMes) { state.chartMes.destroy(); state.chartMes = null; }
-    return;
+    canvas.style.display="none"; empty.classList.remove("hidden");
+    try { if(S.chartR) S.chartR.destroy(); } catch(e) {}
+    S.chartR = null; return;
   }
 
-  canvas.style.display = "";
-  empty.classList.add("hidden");
+  canvas.style.display=""; empty.classList.add("hidden");
 
-  const labels = chaves.map(k => {
-    const [y, m] = k.split("-");
-    const nomes  = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-    return nomes[parseInt(m)] + "/" + y.slice(2);
+  // Ordenar meses cronologicamente
+  const MNUM = {janeiro:1,fevereiro:2,marco:3,março:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+  chaves.sort((a,b) => {
+    const dA = porMes[a], dB = porMes[b];
+    const oA = dA.ano*100 + (MNUM[dA.mes.toLowerCase()]||0);
+    const oB = dB.ano*100 + (MNUM[dB.mes.toLowerCase()]||0);
+    return oA - oB;
   });
-  const valores = chaves.map(k => porMes[k]);
 
-  if (state.chartMes) state.chartMes.destroy();
+  const labels     = chaves.map(k => porMes[k].mes.slice(0,3) + "/" + String(porMes[k].ano).slice(2));
+  const totais     = chaves.map(k => porMes[k].total);
+  const glosas     = chaves.map(k => porMes[k].totalGlosa);
+  const normais    = chaves.map((k,i) => totais[i] - glosas[i]);
 
-  state.chartMes = new Chart(canvas, {
+  try { if(S.chartR) S.chartR.destroy(); } catch(e) {}
+
+  S.chartR = new Chart(canvas, {
     type: "bar",
     data: {
       labels,
-      datasets: [{
-        label: "Faturamento (R$)",
-        data: valores,
-        backgroundColor: "rgba(37,99,235,.75)",
-        borderColor:     "rgba(37,99,235,1)",
-        borderWidth: 1.5,
-        borderRadius: 6,
-        borderSkipped: false,
-      }]
+      datasets: [
+        { label:"Repasse normal", data:normais, backgroundColor:"rgba(29,78,216,.75)", borderRadius:5, borderSkipped:false },
+        { label:"Glosa", data:glosas, backgroundColor:"rgba(245,158,11,.8)", borderRadius:5, borderSkipped:false }
+      ]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => " " + moeda(ctx.parsed.y)
-          }
-        }
-      },
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{position:"top",labels:{font:{size:11}}}, tooltip:{callbacks:{label:ctx=>" "+br(ctx.parsed.y)}} },
       scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { callback: v => "R$ " + v.toLocaleString("pt-BR"), font: { size: 11 } },
-          grid: { color: "#f1f5f9" }
-        },
-        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        x: { stacked:true, grid:{display:false}, ticks:{font:{size:11}} },
+        y: { stacked:true, beginAtZero:true, ticks:{callback:v=>"R$"+v.toLocaleString("pt-BR"),font:{size:11}}, grid:{color:"#f1f5f9"} }
       }
     }
   });
 }
 
-// ─────────────────────────────────────────
-//  GRÁFICO SECUNDÁRIO — Profissional (admin) ou Evolução (user)
-// ─────────────────────────────────────────
+// ─── GRÁFICO SECUNDÁRIO ──────────────────────────────────────
 function renderizarGraficoSec(json) {
   const canvas = $("chartSec");
   const empty  = $("chartSecEmpty");
-  const isAdmin = state.usuario && state.usuario.tipo === "admin";
+  const isAdmin = S.usuario && S.usuario.tipo === "admin";
 
-  let labels, valores, tipo, title, badge;
+  let labels, valores, tipo;
 
   if (isAdmin && json.porProfissional && Object.keys(json.porProfissional).length > 0) {
-    const pp = json.porProfissional;
-    labels  = Object.keys(pp);
-    valores = labels.map(k => pp[k]);
+    labels  = Object.keys(json.porProfissional);
+    valores = labels.map(k => json.porProfissional[k]);
     tipo    = "doughnut";
-    title   = "Por profissional";
-    badge   = "Rosca";
+    $("chartSecTitulo").textContent = "Por Profissional";
+    $("chartSecBadge").textContent  = "Rosca";
   } else {
-    // Usuário: linha de evolução mensal
-    const pm = json.porMes || {};
-    const ch = Object.keys(pm).sort();
-    if (ch.length === 0) {
-      canvas.style.display = "none";
-      empty.classList.remove("hidden");
-      if (state.chartSec) { state.chartSec.destroy(); state.chartSec = null; }
-      return;
+    const normal = (json.totalRepasse||0) - (json.totalGlosa||0);
+    const glosa  = json.totalGlosa || 0;
+    if (normal===0 && glosa===0) {
+      canvas.style.display="none"; empty.classList.remove("hidden");
+      try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
+      S.chartS=null; return;
     }
-    labels  = ch.map(k => { const [y,m]=k.split("-"); const n=["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]; return n[parseInt(m)]+"/"+y.slice(2); });
-    valores = ch.map(k => pm[k]);
-    tipo    = "line";
-    title   = "Evolução mensal";
-    badge   = "Linha";
+    labels  = ["Repasse Normal","Glosa"];
+    valores = [normal, glosa];
+    tipo    = "doughnut";
+    $("chartSecTitulo").textContent = "Composição do Repasse";
+    $("chartSecBadge").textContent  = "Rosca";
   }
 
-  canvas.style.display = "";
-  empty.classList.add("hidden");
-  $("chartSecTitle").textContent = title;
-  $("chartSecBadge").textContent = badge;
+  if (labels.length===0) {
+    canvas.style.display="none"; empty.classList.remove("hidden");
+    try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
+    S.chartS=null; return;
+  }
 
-  const cores = [
-    "#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6",
-    "#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"
-  ];
+  canvas.style.display=""; empty.classList.add("hidden");
 
-  if (state.chartSec) state.chartSec.destroy();
+  const cores = ["#1d4ed8","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
 
-  const cfg = tipo === "doughnut"
-    ? {
-        type: "doughnut",
-        data: {
-          labels,
-          datasets: [{ data: valores, backgroundColor: cores.slice(0, labels.length),
-            borderWidth: 2, borderColor: "#fff", hoverOffset: 8 }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { position:"right", labels: { font:{size:11}, padding:12 } },
-            tooltip: { callbacks: { label: ctx => " " + moeda(ctx.parsed) } }
-          }
-        }
-      }
-    : {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: "Faturamento",
-            data: valores,
-            borderColor: "#3b82f6",
-            backgroundColor: "rgba(59,130,246,.08)",
-            tension: .4, fill: true, pointRadius: 4,
-            pointBackgroundColor: "#3b82f6"
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: ctx => " " + moeda(ctx.parsed.y) } }
-          },
-          scales: {
-            y: { beginAtZero: true, ticks: { callback: v => "R$ " + v.toLocaleString("pt-BR"), font:{size:11} }, grid:{color:"#f1f5f9"} },
-            x: { grid:{display:false}, ticks:{font:{size:11}} }
-          }
-        }
-      };
+  try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
 
-  state.chartSec = new Chart(canvas, cfg);
+  S.chartS = new Chart(canvas, {
+    type:"doughnut",
+    data:{ labels, datasets:[{ data:valores, backgroundColor:cores.slice(0,labels.length), borderWidth:2, borderColor:"#fff", hoverOffset:6 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:"right",labels:{font:{size:11},padding:10}}, tooltip:{callbacks:{label:ctx=>" "+br(ctx.parsed)}} }
+    }
+  });
 }
 
-// ─────────────────────────────────────────
-//  EXPORTAR CSV
-// ─────────────────────────────────────────
+// ─── EXPORTAR CSV ────────────────────────────────────────────
 function exportarCSV() {
-  const regs    = state.registrosFilt;
-  const isAdmin = state.usuario && state.usuario.tipo === "admin";
-  if (!regs.length) { showToast("Nenhum dado para exportar.", "erro"); return; }
-
+  if (!S.regs.length) { toast("Nenhum dado para exportar.","warn"); return; }
+  const isAdmin = S.usuario && S.usuario.tipo==="admin";
   const cols = isAdmin
-    ? ["Data","Profissional","Paciente","Valor"]
-    : ["Data","Paciente","Valor"];
-
+    ? ["Data Atendimento","Profissional","Paciente","Mês Repasse","Ano Repasse","Valor","Glosa"]
+    : ["Data Atendimento","Paciente","Mês Repasse","Ano Repasse","Valor","Glosa"];
   const linhas = [cols.join(";")];
-  regs.forEach(r => {
+  S.regs.forEach(r => {
     const row = isAdmin
-      ? [dataFormatada(r.data), r.profissional, r.paciente, r.valor.toFixed(2).replace(".", ",")]
-      : [dataFormatada(r.data), r.paciente, r.valor.toFixed(2).replace(".", ",")];
-    linhas.push(row.map(c => `"${c}"`).join(";"));
+      ? [dt(r.data), r.profissional, r.paciente, r.mesRepasse, r.anoRepasse, r.valor.toFixed(2).replace(".",","), r.glosa?"SIM":"NÃO"]
+      : [dt(r.data), r.paciente, r.mesRepasse, r.anoRepasse, r.valor.toFixed(2).replace(".",","), r.glosa?"SIM":"NÃO"];
+    linhas.push(row.map(c=>`"${c}"`).join(";"));
   });
-
-  const blob = new Blob(["\uFEFF" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF"+linhas.join("\r\n")],{type:"text/csv;charset=utf-8;"});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
-  a.href = url;
-  a.download = `atendimentos_${new Date().toISOString().slice(0,10)}.csv`;
+  a.href = url; a.download = "repasses_"+new Date().toISOString().slice(0,10)+".csv";
   document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast("CSV exportado com sucesso!", "ok");
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast("CSV exportado com sucesso!","ok");
 }
 
-// ─────────────────────────────────────────
-//  LOGOUT
-// ─────────────────────────────────────────
+// ─── LOGOUT ──────────────────────────────────────────────────
 function logout() {
-  state = { credencial:"", isEmail:false, usuario:null, dados:null,
-    registrosFilt:[], pagina:1, porPagina:20, sortCol:"data", sortDir:"desc",
-    chartMes:null, chartSec:null };
+  S = { cred:"", isEmail:false, usuario:null, dados:null, regs:[], pagina:1, pp:20, sortCol:"data", sortDir:"desc", apenasGlosa:false, chartR:null, chartS:null };
   $("credencial").value = "";
   $("loginErro").classList.add("hidden");
   $("dashboardScreen").classList.add("hidden");
   $("loginScreen").classList.remove("hidden");
-  // Limpa dropdowns
-  const selMes = $("filtMes"), selAno = $("filtAno"), selProf = $("filtProfissional");
-  if (selMes) selMes.innerHTML = "";
-  if (selAno) selAno.innerHTML = "";
-  if (selProf) selProf.innerHTML = "<option value=''>Todos</option>";
+  $("filtMes").innerHTML = '<option value="">Todos os meses</option>';
+  $("filtAno").innerHTML = '<option value="">Todos os anos</option>';
+  if($("filtProfissional")) $("filtProfissional").innerHTML = '<option value="">Todos</option>';
 }
 
-// ─────────────────────────────────────────
-//  TECLA ENTER nos filtros → buscar
-// ─────────────────────────────────────────
-["filtPaciente","filtDataInicio","filtDataFim"].forEach(id => {
+// ─── ENTER nos filtros ────────────────────────────────────────
+["filtPaciente"].forEach(id => {
   const el = $(id);
-  if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") buscar(); });
+  if (el) el.addEventListener("keydown", e => { if(e.key==="Enter") buscar(); });
 });
 </script>
 
