@@ -635,56 +635,104 @@ function renderizarGraficoRepasse(porMes) {
 }
 
 // ─── GRÁFICO SECUNDÁRIO ──────────────────────────────────────
+// ADMIN → rosca por profissional | USER → Top 5 Pacientes (barras horizontais)
 function renderizarGraficoSec(json) {
-  const canvas = $("chartSec");
-  const empty  = $("chartSecEmpty");
-  const isAdmin = S.usuario && S.usuario.tipo === "admin";
+  var canvas  = document.getElementById("chartSec");
+  var empty   = document.getElementById("chartSecEmpty");
+  var isAdmin = S.usuario && S.usuario.tipo === "admin";
 
-  let labels, valores, tipo;
+  try { if (S.chartS) { S.chartS.destroy(); } } catch(e) {}
+  S.chartS = null;
 
-  if (isAdmin && json.porProfissional && Object.keys(json.porProfissional).length > 0) {
-    labels  = Object.keys(json.porProfissional);
-    valores = labels.map(k => json.porProfissional[k]);
-    tipo    = "doughnut";
-    $("chartSecTitulo").textContent = "Por Profissional";
-    $("chartSecBadge").textContent  = "Rosca";
-  } else {
-    const normal = (json.totalRepasse||0) - (json.totalGlosa||0);
-    const glosa  = json.totalGlosa || 0;
-    if (normal===0 && glosa===0) {
-      canvas.style.display="none"; empty.classList.remove("hidden");
-      try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
-      S.chartS=null; return;
+  // ── ADMIN: rosca por profissional ──────────────────────────
+  if (isAdmin) {
+    var porProf = json.porProfissional || {};
+    var profKeys = Object.keys(porProf);
+    if (profKeys.length === 0) {
+      canvas.style.display = "none";
+      empty.classList.remove("hidden");
+      return;
     }
-    labels  = ["Repasse Normal","Glosa"];
-    valores = [normal, glosa];
-    tipo    = "doughnut";
-    $("chartSecTitulo").textContent = "Composição do Repasse";
-    $("chartSecBadge").textContent  = "Rosca";
+    canvas.style.display = "";
+    empty.classList.add("hidden");
+    document.getElementById("chartSecTitulo").textContent = "Por Profissional";
+    document.getElementById("chartSecBadge").textContent  = "Rosca";
+    var cores = ["#1d4ed8","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
+    S.chartS = new Chart(canvas, {
+      type: "doughnut",
+      data: {
+        labels: profKeys,
+        datasets: [{
+          data: profKeys.map(function(k){ return porProf[k]; }),
+          backgroundColor: cores.slice(0, profKeys.length),
+          borderWidth: 2, borderColor: "#fff", hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position:"right", labels:{ font:{size:11}, padding:10 } },
+          tooltip: { callbacks: { label: function(ctx){ return " " + br(ctx.parsed); } } }
+        }
+      }
+    });
+    return;
   }
 
-  if (labels.length===0) {
-    canvas.style.display="none"; empty.classList.remove("hidden");
-    try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
-    S.chartS=null; return;
+  // ── USER: Top 5 Pacientes (barras horizontais) ─────────────
+  // Dados já filtrados pelo backend — sem risco de vazar info de outros profissionais
+  var totPorPac = {};
+  (S.regs || []).forEach(function(r) {
+    totPorPac[r.paciente] = (totPorPac[r.paciente] || 0) + r.valor;
+  });
+  var pacs = Object.keys(totPorPac);
+  if (pacs.length === 0) {
+    canvas.style.display = "none";
+    empty.classList.remove("hidden");
+    return;
   }
+  // Ordenar por valor desc e pegar top 5
+  pacs.sort(function(a, b){ return totPorPac[b] - totPorPac[a]; });
+  var top5 = pacs.slice(0, 5);
+  var vals  = top5.map(function(p){ return totPorPac[p]; });
+  // Truncar nomes longos para o gráfico
+  var labels = top5.map(function(p){ return p.length > 18 ? p.slice(0,16)+"…" : p; });
 
-  canvas.style.display=""; empty.classList.add("hidden");
-
-  const cores = ["#1d4ed8","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
-
-  try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
+  canvas.style.display = "";
+  empty.classList.add("hidden");
+  document.getElementById("chartSecTitulo").textContent = "Top 5 Pacientes";
+  document.getElementById("chartSecBadge").textContent  = "Barras";
 
   S.chartS = new Chart(canvas, {
-    type:"doughnut",
-    data:{ labels, datasets:[{ data:valores, backgroundColor:cores.slice(0,labels.length), borderWidth:2, borderColor:"#fff", hoverOffset:6 }] },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{position:"right",labels:{font:{size:11},padding:10}}, tooltip:{callbacks:{label:ctx=>" "+br(ctx.parsed)}} }
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Total recebido",
+        data: vals,
+        backgroundColor: "rgba(29,78,216,.75)",
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx){ return " " + br(ctx.parsed.x); } } }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { callback: function(v){ return "R$" + v.toLocaleString("pt-BR"); }, font:{size:10} },
+          grid: { color: "#f1f5f9" }
+        },
+        y: { ticks: { font:{size:11} }, grid: { display:false } }
+      }
     }
   });
 }
-
 // ─── EXPORTAR CSV ────────────────────────────────────────────
 function exportarCSV() {
   if (!S.regs.length) { toast("Nenhum dado para exportar.","warn"); return; }
