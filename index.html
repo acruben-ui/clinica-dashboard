@@ -285,6 +285,40 @@ th:hover{color:#1d4ed8}
 // ─── CONFIGURAÇÃO ───────────────────────────────────────────
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxGwSb9KuSMHu8KN-p9-2t9YovwOo9pcxygi_HzNgayLXzxP33E9FPJ75sKmdadtUor/exec";
 
+// ─── MÊS ATUAL (sem acentos para comparação) ────────────────
+const MESES_NORM = ["janeiro","fevereiro","marco","abril","maio","junho",
+                    "julho","agosto","setembro","outubro","novembro","dezembro"];
+
+function mesAtual() {
+  const d = new Date();
+  return { mes: MESES_NORM[d.getMonth()], ano: d.getFullYear() };
+}
+
+// Após os selects serem populados, pré-seleciona mês e ano atuais
+function preselecionarMesAtual() {
+  const d    = new Date();
+  const ano  = d.getFullYear();
+  const mIdx = d.getMonth();
+
+  // Pré-seleciona o ano
+  const selAno = $("filtAno");
+  for (let i = 0; i < selAno.options.length; i++) {
+    if (Number(selAno.options[i].value) === ano) { selAno.value = String(ano); break; }
+  }
+
+  // Pré-seleciona o mês: normaliza acentos para comparar (suporta "março" e "marco")
+  const selMes = $("filtMes");
+  for (let i = 0; i < selMes.options.length; i++) {
+    const val  = selMes.options[i].value;
+    const norm = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const txtAno = selMes.options[i].textContent;
+    if (norm === MESES_NORM[mIdx] && txtAno.includes(String(ano))) {
+      selMes.value = val;
+      break;
+    }
+  }
+}
+
 // ─── ESTADO ─────────────────────────────────────────────────
 let S = {
   cred:'', isEmail:false, usuario:null,
@@ -335,9 +369,15 @@ $("loginForm").addEventListener("submit", async e => {
   const isEmail = cred.includes("@");
   const p = isEmail ? "email="+encodeURIComponent(cred) : "token="+encodeURIComponent(cred);
 
+  // Já faz o login filtrado pelo mês/ano atual
+  const { mes: mesLogin, ano: anoLogin } = mesAtual();
+
   let json = null;
   try {
-    const res = await fetch(GAS_URL + "?action=dashboard&" + p + "&_t=" + Date.now());
+    const res = await fetch(GAS_URL + "?action=dashboard&" + p
+      + "&mesRepasse=" + encodeURIComponent(mesLogin)
+      + "&anoRepasse=" + anoLogin
+      + "&_t=" + Date.now());
     json = await res.json();
   } catch(err) {
     mostrarErroLogin("Erro de conexão. Verifique a URL do Web App.");
@@ -383,6 +423,8 @@ async function iniciarDashboard(json) {
 
   await carregarMeses();
   carregarAnos();
+  // Pré-selecionar mês e ano atuais nos dropdowns
+  preselecionarMesAtual();
   renderizarDados(json);
 }
 
@@ -393,6 +435,8 @@ async function carregarMeses() {
     const json = await res.json();
     if (json.ok && json.meses) {
       const sel = $("filtMes");
+      // Limpar antes de popular para evitar duplicatas
+      sel.innerHTML = '<option value="">Todos os meses</option>';
       json.meses.forEach(m => {
         const o = document.createElement("option");
         o.value = m.valor;
@@ -405,6 +449,8 @@ async function carregarMeses() {
 
 function carregarAnos() {
   const sel = $("filtAno");
+  // Limpar antes de popular para evitar duplicatas
+  sel.innerHTML = '<option value="">Todos os anos</option>';
   const ano = new Date().getFullYear();
   for (let y = ano; y >= ano - 5; y--) {
     const o = document.createElement("option");
@@ -419,6 +465,8 @@ async function carregarProfissionais() {
     const json = await res.json();
     if (json.ok && json.profissionais) {
       const sel = $("filtProfissional");
+      // Limpar antes de popular para evitar duplicatas
+      sel.innerHTML = '<option value="">Todos</option>';
       json.profissionais.forEach(p2 => {
         const o = document.createElement("option");
         o.value = p2.profissional; o.textContent = p2.profissional; sel.appendChild(o);
@@ -635,104 +683,56 @@ function renderizarGraficoRepasse(porMes) {
 }
 
 // ─── GRÁFICO SECUNDÁRIO ──────────────────────────────────────
-// ADMIN → rosca por profissional | USER → Top 5 Pacientes (barras horizontais)
 function renderizarGraficoSec(json) {
-  var canvas  = document.getElementById("chartSec");
-  var empty   = document.getElementById("chartSecEmpty");
-  var isAdmin = S.usuario && S.usuario.tipo === "admin";
+  const canvas = $("chartSec");
+  const empty  = $("chartSecEmpty");
+  const isAdmin = S.usuario && S.usuario.tipo === "admin";
 
-  try { if (S.chartS) { S.chartS.destroy(); } } catch(e) {}
-  S.chartS = null;
+  let labels, valores, tipo;
 
-  // ── ADMIN: rosca por profissional ──────────────────────────
-  if (isAdmin) {
-    var porProf = json.porProfissional || {};
-    var profKeys = Object.keys(porProf);
-    if (profKeys.length === 0) {
-      canvas.style.display = "none";
-      empty.classList.remove("hidden");
-      return;
+  if (isAdmin && json.porProfissional && Object.keys(json.porProfissional).length > 0) {
+    labels  = Object.keys(json.porProfissional);
+    valores = labels.map(k => json.porProfissional[k]);
+    tipo    = "doughnut";
+    $("chartSecTitulo").textContent = "Por Profissional";
+    $("chartSecBadge").textContent  = "Rosca";
+  } else {
+    const normal = (json.totalRepasse||0) - (json.totalGlosa||0);
+    const glosa  = json.totalGlosa || 0;
+    if (normal===0 && glosa===0) {
+      canvas.style.display="none"; empty.classList.remove("hidden");
+      try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
+      S.chartS=null; return;
     }
-    canvas.style.display = "";
-    empty.classList.add("hidden");
-    document.getElementById("chartSecTitulo").textContent = "Por Profissional";
-    document.getElementById("chartSecBadge").textContent  = "Rosca";
-    var cores = ["#1d4ed8","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
-    S.chartS = new Chart(canvas, {
-      type: "doughnut",
-      data: {
-        labels: profKeys,
-        datasets: [{
-          data: profKeys.map(function(k){ return porProf[k]; }),
-          backgroundColor: cores.slice(0, profKeys.length),
-          borderWidth: 2, borderColor: "#fff", hoverOffset: 6
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position:"right", labels:{ font:{size:11}, padding:10 } },
-          tooltip: { callbacks: { label: function(ctx){ return " " + br(ctx.parsed); } } }
-        }
-      }
-    });
-    return;
+    labels  = ["Repasse Normal","Glosa"];
+    valores = [normal, glosa];
+    tipo    = "doughnut";
+    $("chartSecTitulo").textContent = "Composição do Repasse";
+    $("chartSecBadge").textContent  = "Rosca";
   }
 
-  // ── USER: Top 5 Pacientes (barras horizontais) ─────────────
-  // Dados já filtrados pelo backend — sem risco de vazar info de outros profissionais
-  var totPorPac = {};
-  (S.regs || []).forEach(function(r) {
-    totPorPac[r.paciente] = (totPorPac[r.paciente] || 0) + r.valor;
-  });
-  var pacs = Object.keys(totPorPac);
-  if (pacs.length === 0) {
-    canvas.style.display = "none";
-    empty.classList.remove("hidden");
-    return;
+  if (labels.length===0) {
+    canvas.style.display="none"; empty.classList.remove("hidden");
+    try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
+    S.chartS=null; return;
   }
-  // Ordenar por valor desc e pegar top 5
-  pacs.sort(function(a, b){ return totPorPac[b] - totPorPac[a]; });
-  var top5 = pacs.slice(0, 5);
-  var vals  = top5.map(function(p){ return totPorPac[p]; });
-  // Truncar nomes longos para o gráfico
-  var labels = top5.map(function(p){ return p.length > 18 ? p.slice(0,16)+"…" : p; });
 
-  canvas.style.display = "";
-  empty.classList.add("hidden");
-  document.getElementById("chartSecTitulo").textContent = "Top 5 Pacientes";
-  document.getElementById("chartSecBadge").textContent  = "Barras";
+  canvas.style.display=""; empty.classList.add("hidden");
+
+  const cores = ["#1d4ed8","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
+
+  try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
 
   S.chartS = new Chart(canvas, {
-    type: "bar",
-    data: {
-      labels: labels,
-      datasets: [{
-        label: "Total recebido",
-        data: vals,
-        backgroundColor: "rgba(29,78,216,.75)",
-        borderRadius: 6,
-        borderSkipped: false
-      }]
-    },
-    options: {
-      indexAxis: "y",
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: function(ctx){ return " " + br(ctx.parsed.x); } } }
-      },
-      scales: {
-        x: {
-          beginAtZero: true,
-          ticks: { callback: function(v){ return "R$" + v.toLocaleString("pt-BR"); }, font:{size:10} },
-          grid: { color: "#f1f5f9" }
-        },
-        y: { ticks: { font:{size:11} }, grid: { display:false } }
-      }
+    type:"doughnut",
+    data:{ labels, datasets:[{ data:valores, backgroundColor:cores.slice(0,labels.length), borderWidth:2, borderColor:"#fff", hoverOffset:6 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:"right",labels:{font:{size:11},padding:10}}, tooltip:{callbacks:{label:ctx=>" "+br(ctx.parsed)}} }
     }
   });
 }
+
 // ─── EXPORTAR CSV ────────────────────────────────────────────
 function exportarCSV() {
   if (!S.regs.length) { toast("Nenhum dado para exportar.","warn"); return; }
@@ -774,9 +774,5 @@ function logout() {
   if (el) el.addEventListener("keydown", e => { if(e.key==="Enter") buscar(); });
 });
 </script>
-
-<script src="https://static-s3.skyworkcdn.com/fe/skywork-site-assets/scripts/embed_website.min.js"></script>
-<script async src="https://static-us-img.skywork.ai/prod/website_script/websiteBadge.js?v=3"></script>
-<script async src="https://static-us-img.skywork.ai/prod/website_script/websiteTrack.js?v=3"></script>
 </body>
 </html>
