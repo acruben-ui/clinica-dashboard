@@ -211,13 +211,16 @@ th:hover{color:#1d4ed8}
           <div id="chartRepasseEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
       </div>
-      <!-- Por profissional / glosa breakdown (ocupa 2/5) -->
+      <!-- Painel secundário: Admin=Resumo a Pagar | User=Top 5 Pacientes -->
       <div class="card p-5 lg:col-span-2">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-semibold text-slate-700" id="chartSecTitulo">Por Profissional</h3>
-          <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full" id="chartSecBadge">Rosca</span>
+          <h3 class="text-sm font-semibold text-slate-700" id="chartSecTitulo">A Pagar no Período</h3>
+          <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full" id="chartSecBadge">Resumo</span>
         </div>
-        <div style="height:220px;position:relative">
+        <!-- Admin: lista de profissionais -->
+        <div id="resumoProfWrap" class="hidden overflow-y-auto" style="max-height:220px"></div>
+        <!-- User: gráfico Top 5 Pacientes -->
+        <div id="chartSecWrap" style="height:220px;position:relative">
           <canvas id="chartSec"></canvas>
           <div id="chartSecEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
@@ -682,53 +685,105 @@ function renderizarGraficoRepasse(porMes) {
   });
 }
 
-// ─── GRÁFICO SECUNDÁRIO ──────────────────────────────────────
+// ─── PAINEL SECUNDÁRIO ───────────────────────────────────────
+// Admin → Resumo "A Pagar" por profissional (lista com barra)
+// User  → Top 5 Pacientes (barras horizontais)
 function renderizarGraficoSec(json) {
-  const canvas = $("chartSec");
-  const empty  = $("chartSecEmpty");
-  const isAdmin = S.usuario && S.usuario.tipo === "admin";
+  const canvas    = $("chartSec");
+  const empty     = $("chartSecEmpty");
+  const chartWrap = $("chartSecWrap");
+  const profWrap  = $("resumoProfWrap");
+  const isAdmin   = S.usuario && S.usuario.tipo === "admin";
 
-  let labels, valores, tipo;
+  // Destruir gráfico anterior se existir
+  try { if (S.chartS) { S.chartS.destroy(); } } catch(e) {}
+  S.chartS = null;
 
-  if (isAdmin && json.porProfissional && Object.keys(json.porProfissional).length > 0) {
-    labels  = Object.keys(json.porProfissional);
-    valores = labels.map(k => json.porProfissional[k]);
-    tipo    = "doughnut";
-    $("chartSecTitulo").textContent = "Por Profissional";
-    $("chartSecBadge").textContent  = "Rosca";
-  } else {
-    const normal = (json.totalRepasse||0) - (json.totalGlosa||0);
-    const glosa  = json.totalGlosa || 0;
-    if (normal===0 && glosa===0) {
-      canvas.style.display="none"; empty.classList.remove("hidden");
-      try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
-      S.chartS=null; return;
+  // ── ADMIN: painel de resumo "A Pagar" ──────────────────────
+  if (isAdmin) {
+    chartWrap.style.display = "none";
+    profWrap.classList.remove("hidden");
+
+    const porProf  = json.porProfissional || {};
+    const profKeys = Object.keys(porProf);
+
+    $("chartSecTitulo").textContent = "A Pagar no Período";
+
+    if (profKeys.length === 0) {
+      profWrap.innerHTML = '<p class="text-slate-400 text-sm text-center pt-8">Sem dados no período.</p>';
+      $("chartSecBadge").textContent = "0 prof.";
+      return;
     }
-    labels  = ["Repasse Normal","Glosa"];
-    valores = [normal, glosa];
-    tipo    = "doughnut";
-    $("chartSecTitulo").textContent = "Composição do Repasse";
-    $("chartSecBadge").textContent  = "Rosca";
+
+    // Ordenar por valor decrescente
+    profKeys.sort((a, b) => porProf[b] - porProf[a]);
+    const total  = profKeys.reduce((s, k) => s + porProf[k], 0);
+    const maxVal = porProf[profKeys[0]];
+    const cores  = ["#1d4ed8","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
+
+    $("chartSecBadge").textContent = profKeys.length + " prof.";
+
+    profWrap.innerHTML =
+      profKeys.map((prof, i) => {
+        const val = porProf[prof];
+        const pct = maxVal > 0 ? Math.round((val / maxVal) * 100) : 0;
+        const cor = cores[i % cores.length];
+        const pctTotal = total > 0 ? ((val / total) * 100).toFixed(1) : "0.0";
+        return `
+          <div class="mb-3 last:mb-0">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-semibold text-slate-700 truncate max-w-[60%]" title="${esc(prof)}">${esc(prof)}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400">${pctTotal}%</span>
+                <span class="text-xs font-bold text-slate-800 whitespace-nowrap">${br(val)}</span>
+              </div>
+            </div>
+            <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500" style="width:${pct}%;background:${cor}"></div>
+            </div>
+          </div>`;
+      }).join("") +
+      `<div class="border-t-2 border-slate-200 mt-3 pt-3 flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total</span>
+        <span class="text-sm font-extrabold text-emerald-700">${br(total)}</span>
+      </div>`;
+    return;
   }
 
-  if (labels.length===0) {
-    canvas.style.display="none"; empty.classList.remove("hidden");
-    try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
-    S.chartS=null; return;
+  // ── USER: Top 5 Pacientes (barras horizontais) ─────────────
+  profWrap.classList.add("hidden");
+  chartWrap.style.display = "";
+
+  const totPorPac = {};
+  (S.regs || []).forEach(r => {
+    totPorPac[r.paciente] = (totPorPac[r.paciente] || 0) + r.valor;
+  });
+  const pacs = Object.keys(totPorPac);
+  if (pacs.length === 0) {
+    canvas.style.display = "none"; empty.classList.remove("hidden"); return;
   }
+  pacs.sort((a, b) => totPorPac[b] - totPorPac[a]);
+  const top5   = pacs.slice(0, 5);
+  const vals   = top5.map(p => totPorPac[p]);
+  const labels = top5.map(p => p.length > 18 ? p.slice(0,16)+"…" : p);
 
-  canvas.style.display=""; empty.classList.add("hidden");
-
-  const cores = ["#1d4ed8","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
-
-  try { if(S.chartS) S.chartS.destroy(); } catch(e) {}
+  canvas.style.display = ""; empty.classList.add("hidden");
+  $("chartSecTitulo").textContent = "Top 5 Pacientes";
+  $("chartSecBadge").textContent  = "Barras";
 
   S.chartS = new Chart(canvas, {
-    type:"doughnut",
-    data:{ labels, datasets:[{ data:valores, backgroundColor:cores.slice(0,labels.length), borderWidth:2, borderColor:"#fff", hoverOffset:6 }] },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{position:"right",labels:{font:{size:11},padding:10}}, tooltip:{callbacks:{label:ctx=>" "+br(ctx.parsed)}} }
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ label:"Total recebido", data:vals, backgroundColor:"rgba(29,78,216,.75)", borderRadius:6, borderSkipped:false }]
+    },
+    options: {
+      indexAxis: "y", responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{display:false}, tooltip:{callbacks:{label:ctx=>" "+br(ctx.parsed.x)}} },
+      scales: {
+        x: { beginAtZero:true, ticks:{callback:v=>"R$"+v.toLocaleString("pt-BR"),font:{size:10}}, grid:{color:"#f1f5f9"} },
+        y: { ticks:{font:{size:11}}, grid:{display:false} }
+      }
     }
   });
 }
