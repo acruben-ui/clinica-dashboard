@@ -200,40 +200,48 @@ th:hover{color:#1d4ed8}
       </div>
     </section>
 
-    <!-- GRÁFICOS -->
-    <section class="grid grid-cols-1 lg:grid-cols-5 gap-5 fade-up">
-      <!-- Histórico de repasses (ocupa 2/5 — menor para dar espaço ao painel A Pagar) -->
-      <div class="card p-5 lg:col-span-2">
+    <!-- GRÁFICOS — layout adaptado por perfil via JS em iniciarDashboard() -->
+    <section id="secaoGraficos" class="grid grid-cols-1 lg:grid-cols-5 gap-5 fade-up">
+
+      <!-- Histórico de Repasses — id para ajuste de col-span por perfil -->
+      <div id="cardHistorico" class="card p-5 lg:col-span-2">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-slate-700">Histórico de Repasses</h3>
           <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">por mês</span>
         </div>
-        <div style="height:160px;position:relative">
+        <div id="chartRepasseBox" style="height:160px;position:relative">
           <canvas id="chartRepasse"></canvas>
           <div id="chartRepasseEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
       </div>
-      <!-- Painel secundário: Admin=Resumo a Pagar | User=Top 5 Pacientes (ocupa 3/5) -->
-      <div class="card p-5 lg:col-span-3">
+
+      <!-- CARD ADMIN ONLY: A Pagar no Período (3/5) — oculto até login -->
+      <div id="cardAdmin" class="hidden card p-5 lg:col-span-3">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <h3 class="text-sm font-semibold text-slate-700" id="chartSecTitulo">A Pagar no Período</h3>
+            <h3 class="text-sm font-semibold text-slate-700">A Pagar no Período</h3>
             <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full" id="chartSecBadge">Resumo</span>
           </div>
-          <!-- Botão PDF: só aparece para admin -->
-          <button id="btnExportPdf" onclick="exportarPagamentoPDF()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition">
+          <button id="btnExportPdf" onclick="exportarPagamentoPDF()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
             Exportar PDF
           </button>
         </div>
-        <!-- Admin: lista de profissionais -->
-        <div id="resumoProfWrap" class="hidden overflow-y-auto" style="max-height:260px"></div>
-        <!-- User: gráfico Top 5 Pacientes -->
-        <div id="chartSecWrap" style="height:260px;position:relative">
+        <div id="resumoProfWrap" class="overflow-y-auto" style="max-height:260px"></div>
+      </div>
+
+      <!-- CARD USER ONLY: Top 5 Pacientes (2/5) — oculto até login -->
+      <div id="cardUser" class="hidden card p-5 lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-slate-700">Meus Top 5 Pacientes</h3>
+          <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">por valor</span>
+        </div>
+        <div id="chartSecWrap" style="height:220px;position:relative">
           <canvas id="chartSec"></canvas>
           <div id="chartSecEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
       </div>
+
     </section>
 
     <!-- TABELA DE REPASSES -->
@@ -427,10 +435,19 @@ async function iniciarDashboard(json) {
   $("headerAvatar").textContent = u.nome.charAt(0).toUpperCase();
   $("headerSub").textContent   = u.tipo === "admin" ? "Visão geral de todos os profissionais" : "Bem-vindo(a), " + u.nome;
 
+  // Revelar APENAS o card correto para o perfil — nunca os dois ao mesmo tempo
   if (u.tipo === "admin") {
+    $("cardAdmin").classList.remove("hidden");   // admin vê: A Pagar no Período
+    $("cardHistorico").classList.remove("lg:col-span-2");
+    $("cardHistorico").classList.add("lg:col-span-2"); // mantém 2/5
     $("filtProfWrap").classList.remove("hidden");
     $("colProf").classList.remove("hidden");
     carregarProfissionais();
+  } else {
+    $("cardUser").classList.remove("hidden");    // user vê: Top 5 Pacientes
+    // Histórico volta para 3/5 no perfil user
+    $("cardHistorico").classList.remove("lg:col-span-2");
+    $("cardHistorico").classList.add("lg:col-span-3");
   }
 
   await carregarMeses();
@@ -695,47 +712,33 @@ function renderizarGraficoRepasse(porMes) {
 }
 
 // ─── PAINEL SECUNDÁRIO ───────────────────────────────────────
-// Admin → Resumo "A Pagar" por profissional (lista com barra)
-// User  → Top 5 Pacientes (barras horizontais)
+// Admin → preenche cardAdmin (A Pagar no Período)
+// User  → preenche cardUser  (Top 5 Pacientes)
+// Cada card já está oculto/visível pelo iniciarDashboard — aqui só preenchemos
 function renderizarGraficoSec(json) {
-  const canvas    = $("chartSec");
-  const empty     = $("chartSecEmpty");
-  const chartWrap = $("chartSecWrap");
-  const profWrap  = $("resumoProfWrap");
-  const isAdmin   = S.usuario && S.usuario.tipo === "admin";
-
-  // Destruir gráfico anterior se existir
+  const isAdmin = S.usuario && S.usuario.tipo === "admin";
   try { if (S.chartS) { S.chartS.destroy(); } } catch(e) {}
   S.chartS = null;
 
-  // ── ADMIN: painel de resumo "A Pagar" ──────────────────────
+  // ── ADMIN: lista "A Pagar" ─────────────────────────────────
   if (isAdmin) {
-    chartWrap.style.display = "none";
-    profWrap.classList.remove("hidden");
-
+    const profWrap = $("resumoProfWrap");
     const porProf  = json.porProfissional || {};
     const profKeys = Object.keys(porProf);
-
-    $("chartSecTitulo").textContent = "A Pagar no Período";
 
     if (profKeys.length === 0) {
       profWrap.innerHTML = '<p class="text-slate-400 text-sm text-center pt-8">Sem dados no período.</p>';
       $("chartSecBadge").textContent = "0 prof.";
+      S.pdfData = null;
       return;
     }
 
-    // Ordenar por valor decrescente
     profKeys.sort((a, b) => porProf[b] - porProf[a]);
     const total  = profKeys.reduce((s, k) => s + porProf[k], 0);
     const maxVal = porProf[profKeys[0]];
     const cores  = ["#1d4ed8","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
 
     $("chartSecBadge").textContent = profKeys.length + " prof.";
-
-    // Mostrar botão PDF e guardar dados para exportação
-    const btnPdf = $("btnExportPdf");
-    btnPdf.classList.remove("hidden");
-    btnPdf.classList.add("inline-flex");
     S.pdfData = { porProf, profKeys, total };
 
     profWrap.innerHTML =
@@ -765,13 +768,9 @@ function renderizarGraficoSec(json) {
     return;
   }
 
-  // ── USER: Top 5 Pacientes (barras horizontais) ─────────────
-  // Esconder botão PDF no perfil user
-  const btnPdfUser = $("btnExportPdf");
-  btnPdfUser.classList.add("hidden");
-  btnPdfUser.classList.remove("inline-flex");
-  profWrap.classList.add("hidden");
-  chartWrap.style.display = "";
+  // ── USER: Top 5 Pacientes ──────────────────────────────────
+  const canvas = $("chartSec");
+  const empty  = $("chartSecEmpty");
 
   const totPorPac = {};
   (S.regs || []).forEach(r => {
@@ -787,8 +786,6 @@ function renderizarGraficoSec(json) {
   const labels = top5.map(p => p.length > 18 ? p.slice(0,16)+"…" : p);
 
   canvas.style.display = ""; empty.classList.add("hidden");
-  $("chartSecTitulo").textContent = "Top 5 Pacientes";
-  $("chartSecBadge").textContent  = "Barras";
 
   S.chartS = new Chart(canvas, {
     type: "bar",
