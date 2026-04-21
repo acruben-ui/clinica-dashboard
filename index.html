@@ -200,29 +200,30 @@ th:hover{color:#1d4ed8}
       </div>
     </section>
 
-    <!-- GRÁFICOS — layout adaptado por perfil via JS em iniciarDashboard() -->
-    <section id="secaoGraficos" class="grid grid-cols-1 lg:grid-cols-5 gap-5 fade-up">
+    <!-- GRÁFICOS -->
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-5 fade-up">
 
-      <!-- Histórico de Repasses — id para ajuste de col-span por perfil -->
-      <div id="cardHistorico" class="card p-5 lg:col-span-2">
+      <!-- Histórico de Repasses -->
+      <!-- largura controlada por style inline no iniciarDashboard: admin=2/5, user=3/5 -->
+      <div id="cardHistorico" class="card p-5" style="grid-column: span 2">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-slate-700">Histórico de Repasses</h3>
           <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">por mês</span>
         </div>
-        <div id="chartRepasseBox" style="height:160px;position:relative">
+        <div style="height:180px;position:relative">
           <canvas id="chartRepasse"></canvas>
           <div id="chartRepasseEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
       </div>
 
-      <!-- CARD ADMIN ONLY: A Pagar no Período (3/5) — oculto até login -->
-      <div id="cardAdmin" class="hidden card p-5 lg:col-span-3">
+      <!-- CARD ADMIN ONLY: A Pagar no Período — visibilidade e largura controladas por JS -->
+      <div id="cardAdmin" class="card p-5" style="display:none; grid-column: span 3">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
             <h3 class="text-sm font-semibold text-slate-700">A Pagar no Período</h3>
             <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full" id="chartSecBadge">Resumo</span>
           </div>
-          <button id="btnExportPdf" onclick="exportarPagamentoPDF()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition">
+          <button onclick="exportarPagamentoPDF()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
             Exportar PDF
           </button>
@@ -230,13 +231,13 @@ th:hover{color:#1d4ed8}
         <div id="resumoProfWrap" class="overflow-y-auto" style="max-height:260px"></div>
       </div>
 
-      <!-- CARD USER ONLY: Top 5 Pacientes (2/5) — oculto até login -->
-      <div id="cardUser" class="hidden card p-5 lg:col-span-2">
+      <!-- CARD USER ONLY: Top 5 Pacientes — visibilidade e largura controladas por JS -->
+      <div id="cardUser" class="card p-5" style="display:none; grid-column: span 2">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-semibold text-slate-700">Meus Top 5 Pacientes</h3>
           <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">por valor</span>
         </div>
-        <div id="chartSecWrap" style="height:220px;position:relative">
+        <div style="height:220px;position:relative">
           <canvas id="chartSec"></canvas>
           <div id="chartSecEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
@@ -435,19 +436,20 @@ async function iniciarDashboard(json) {
   $("headerAvatar").textContent = u.nome.charAt(0).toUpperCase();
   $("headerSub").textContent   = u.tipo === "admin" ? "Visão geral de todos os profissionais" : "Bem-vindo(a), " + u.nome;
 
-  // Revelar APENAS o card correto para o perfil — nunca os dois ao mesmo tempo
+  // ── Mostrar card correto e ajustar largura do Histórico via style inline ──
   if (u.tipo === "admin") {
-    $("cardAdmin").classList.remove("hidden");   // admin vê: A Pagar no Período
-    $("cardHistorico").classList.remove("lg:col-span-2");
-    $("cardHistorico").classList.add("lg:col-span-2"); // mantém 2/5
+    // Admin: Histórico ocupa 2/5, A Pagar ocupa 3/5
+    $("cardHistorico").style.gridColumn = "span 2";
+    $("cardAdmin").style.display = "block";   // mostra A Pagar
+    $("cardUser").style.display  = "none";    // esconde Top 5
     $("filtProfWrap").classList.remove("hidden");
     $("colProf").classList.remove("hidden");
     carregarProfissionais();
   } else {
-    $("cardUser").classList.remove("hidden");    // user vê: Top 5 Pacientes
-    // Histórico volta para 3/5 no perfil user
-    $("cardHistorico").classList.remove("lg:col-span-2");
-    $("cardHistorico").classList.add("lg:col-span-3");
+    // User: Histórico ocupa 3/5, Top 5 Pacientes ocupa 2/5
+    $("cardHistorico").style.gridColumn = "span 3";
+    $("cardAdmin").style.display = "none";    // esconde A Pagar (nunca visível para user)
+    $("cardUser").style.display  = "block";   // mostra Top 5
   }
 
   await carregarMeses();
@@ -909,11 +911,15 @@ function exportarCSV() {
 
 // ─── LOGOUT ──────────────────────────────────────────────────
 function logout() {
-  S = { cred:"", isEmail:false, usuario:null, dados:null, regs:[], pagina:1, pp:20, sortCol:"data", sortDir:"desc", apenasGlosa:false, chartR:null, chartS:null };
+  S = { cred:"", isEmail:false, usuario:null, dados:null, regs:[], pagina:1, pp:20, sortCol:"data", sortDir:"desc", apenasGlosa:false, chartR:null, chartS:null, pdfData:null };
   $("credencial").value = "";
   $("loginErro").classList.add("hidden");
   $("dashboardScreen").classList.add("hidden");
   $("loginScreen").classList.remove("hidden");
+  // Resetar cards para estado oculto (display:none) prontos para o próximo login
+  $("cardAdmin").style.display = "none";
+  $("cardUser").style.display  = "none";
+  $("cardHistorico").style.gridColumn = "span 2";
   $("filtMes").innerHTML = '<option value="">Todos os meses</option>';
   $("filtAno").innerHTML = '<option value="">Todos os anos</option>';
   if($("filtProfissional")) $("filtProfissional").innerHTML = '<option value="">Todos</option>';
