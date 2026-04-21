@@ -6,6 +6,8 @@
 <title>Repasses da Clínica</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -200,27 +202,34 @@ th:hover{color:#1d4ed8}
 
     <!-- GRÁFICOS -->
     <section class="grid grid-cols-1 lg:grid-cols-5 gap-5 fade-up">
-      <!-- Histórico de repasses (ocupa 3/5) -->
-      <div class="card p-5 lg:col-span-3">
-        <div class="flex items-center justify-between mb-4">
+      <!-- Histórico de repasses (ocupa 2/5 — menor para dar espaço ao painel A Pagar) -->
+      <div class="card p-5 lg:col-span-2">
+        <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-slate-700">Histórico de Repasses</h3>
           <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">por mês</span>
         </div>
-        <div style="height:220px;position:relative">
+        <div style="height:160px;position:relative">
           <canvas id="chartRepasse"></canvas>
           <div id="chartRepasseEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
       </div>
-      <!-- Painel secundário: Admin=Resumo a Pagar | User=Top 5 Pacientes -->
-      <div class="card p-5 lg:col-span-2">
+      <!-- Painel secundário: Admin=Resumo a Pagar | User=Top 5 Pacientes (ocupa 3/5) -->
+      <div class="card p-5 lg:col-span-3">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-semibold text-slate-700" id="chartSecTitulo">A Pagar no Período</h3>
-          <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full" id="chartSecBadge">Resumo</span>
+          <div class="flex items-center gap-3">
+            <h3 class="text-sm font-semibold text-slate-700" id="chartSecTitulo">A Pagar no Período</h3>
+            <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full" id="chartSecBadge">Resumo</span>
+          </div>
+          <!-- Botão PDF: só aparece para admin -->
+          <button id="btnExportPdf" onclick="exportarPagamentoPDF()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            Exportar PDF
+          </button>
         </div>
         <!-- Admin: lista de profissionais -->
-        <div id="resumoProfWrap" class="hidden overflow-y-auto" style="max-height:220px"></div>
+        <div id="resumoProfWrap" class="hidden overflow-y-auto" style="max-height:260px"></div>
         <!-- User: gráfico Top 5 Pacientes -->
-        <div id="chartSecWrap" style="height:220px;position:relative">
+        <div id="chartSecWrap" style="height:260px;position:relative">
           <canvas id="chartSec"></canvas>
           <div id="chartSecEmpty" class="hidden absolute inset-0 flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
         </div>
@@ -723,6 +732,12 @@ function renderizarGraficoSec(json) {
 
     $("chartSecBadge").textContent = profKeys.length + " prof.";
 
+    // Mostrar botão PDF e guardar dados para exportação
+    const btnPdf = $("btnExportPdf");
+    btnPdf.classList.remove("hidden");
+    btnPdf.classList.add("inline-flex");
+    S.pdfData = { porProf, profKeys, total };
+
     profWrap.innerHTML =
       profKeys.map((prof, i) => {
         const val = porProf[prof];
@@ -751,6 +766,10 @@ function renderizarGraficoSec(json) {
   }
 
   // ── USER: Top 5 Pacientes (barras horizontais) ─────────────
+  // Esconder botão PDF no perfil user
+  const btnPdfUser = $("btnExportPdf");
+  btnPdfUser.classList.add("hidden");
+  btnPdfUser.classList.remove("inline-flex");
   profWrap.classList.add("hidden");
   chartWrap.style.display = "";
 
@@ -786,6 +805,86 @@ function renderizarGraficoSec(json) {
       }
     }
   });
+}
+
+// ─── EXPORTAR PDF — A Pagar no Período ──────────────────────
+function exportarPagamentoPDF() {
+  if (!S.pdfData || !S.pdfData.profKeys.length) {
+    toast("Sem dados para exportar.", "warn"); return;
+  }
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { toast("Biblioteca PDF não carregada. Tente novamente.", "erro"); return; }
+
+  const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+
+  const azul  = [13, 71, 161];
+  const verde = [4, 120, 87];
+  const cinza = [100, 116, 139];
+  const branco = [255, 255, 255];
+
+  // Cabeçalho azul
+  doc.setFillColor(...azul);
+  doc.rect(0, 0, 210, 28, "F");
+  doc.setFontSize(16); doc.setFont("helvetica","bold"); doc.setTextColor(...branco);
+  doc.text("Repasses da Clínica", 14, 12);
+  doc.setFontSize(10); doc.setFont("helvetica","normal");
+  doc.text("Relatório: A Pagar no Período", 14, 19);
+
+  // Período e data de geração
+  const mesSel = $("filtMes");
+  const anoSel = $("filtAno");
+  const periodoTxt = (mesSel.options[mesSel.selectedIndex].text || "Todos os meses") +
+                     " / " + (anoSel.value || "Todos os anos");
+  const geradoEm = new Date().toLocaleString("pt-BR");
+  doc.setFontSize(9); doc.setTextColor(...branco);
+  doc.text("Período: " + periodoTxt, 14, 25.5);
+  doc.text("Gerado em: " + geradoEm, 196, 25.5, { align:"right" });
+
+  // Tabela de profissionais
+  const { porProf, profKeys, total } = S.pdfData;
+  const rows = profKeys.map((prof, i) => {
+    const val = porProf[prof];
+    const pct = total > 0 ? ((val / total) * 100).toFixed(1) + "%" : "0.0%";
+    return [
+      String(i + 1),
+      prof,
+      pct,
+      "R$ " + Number(val).toLocaleString("pt-BR", {minimumFractionDigits:2})
+    ];
+  });
+
+  doc.autoTable({
+    startY: 35,
+    head: [["#", "Profissional", "% do Total", "Valor a Pagar"]],
+    body: rows,
+    foot: [["", "TOTAL GERAL", "100%",
+      "R$ " + Number(total).toLocaleString("pt-BR", {minimumFractionDigits:2})]],
+    headStyles:  { fillColor: azul, textColor: branco, fontStyle:"bold", fontSize:10 },
+    footStyles:  { fillColor: [236,253,245], textColor: verde, fontStyle:"bold", fontSize:10 },
+    bodyStyles:  { fontSize: 10, textColor: [30,41,59] },
+    alternateRowStyles: { fillColor: [248,250,252] },
+    columnStyles: {
+      0: { cellWidth:10, halign:"center" },
+      1: { cellWidth:"auto" },
+      2: { cellWidth:28, halign:"center" },
+      3: { cellWidth:42, halign:"right", fontStyle:"bold" }
+    },
+    margin: { left:14, right:14 },
+    showFoot: "lastPage"
+  });
+
+  // Rodapé em todas as páginas
+  const totalPags = doc.internal.getNumberOfPages();
+  for (let pg = 1; pg <= totalPags; pg++) {
+    doc.setPage(pg);
+    doc.setFontSize(8); doc.setTextColor(...cinza);
+    doc.text("Clínica Dashboard — Documento confidencial", 14, 290);
+    doc.text("Pág. " + pg + "/" + totalPags, 196, 290, { align:"right" });
+  }
+
+  const nomeArq = "APagar_" + periodoTxt.replace(" / ", "_").replace(/ /g, "-") + ".pdf";
+  doc.save(nomeArq);
+  toast("PDF exportado com sucesso!", "ok");
 }
 
 // ─── EXPORTAR CSV ────────────────────────────────────────────
