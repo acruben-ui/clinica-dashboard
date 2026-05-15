@@ -588,7 +588,7 @@ function atualizarAvisoMes() {
   if (mesSel || anoSel) {
     // Filtro ativo: informa o período
     const label = ($("filtMes").options[$("filtMes").selectedIndex].text || "período selecionado");
-    txt.textContent = "Exibindo: " + label + (anoSel ? " / " + anoSel : "") + ". Clique em "Ver histórico completo" para ver todos os meses.";
+    txt.textContent = "Exibindo: " + label + (anoSel ? " / " + anoSel : "") + ". Clique em 'Ver histórico completo' para ver todos os meses.";
     aviso.style.display = "flex";
   } else {
     // Sem filtro: mostra histórico completo
