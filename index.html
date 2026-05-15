@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Repasses da Clínica</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -62,7 +60,7 @@ th:hover{color:#1d4ed8}
       <p class="text-slate-500 text-sm mt-1">Acesse com seu e-mail ou código de acesso</p>
     </div>
     <div class="card p-8">
-      <form id="loginForm">
+      <form id="loginForm" onsubmit="return false">
         <div class="mb-5">
           <label class="lbl" for="credencial">E-mail ou Código de Acesso</label>
           <div class="relative">
@@ -979,5 +977,8 @@ function logout() {
   if (el) el.addEventListener("keydown", e => { if(e.key==="Enter") buscar(); });
 });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </body>
 </html>
