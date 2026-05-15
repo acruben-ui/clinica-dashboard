@@ -60,7 +60,7 @@ th:hover{color:#1d4ed8}
       <p class="text-slate-500 text-sm mt-1">Acesse com seu e-mail ou código de acesso</p>
     </div>
     <div class="card p-8">
-      <form id="loginForm" onsubmit="return false">
+      <form id="loginForm">
         <div class="mb-5">
           <label class="lbl" for="credencial">E-mail ou Código de Acesso</label>
           <div class="relative">
@@ -312,6 +312,11 @@ th:hover{color:#1d4ed8}
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+  const _f = document.getElementById('loginForm');
+  if (_f) _f.addEventListener('submit', function(e) { e.preventDefault(); });
+});
+
 // ─── CONFIGURAÇÃO ───────────────────────────────────────────
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxGwSb9KuSMHu8KN-p9-2t9YovwOo9pcxygi_HzNgayLXzxP33E9FPJ75sKmdadtUor/exec";
 
@@ -388,6 +393,7 @@ function esc(s) {
 // ─── LOGIN ───────────────────────────────────────────────────
 $("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
+  e.stopPropagation();
   const cred = $("credencial").value.trim();
   if (!cred) { mostrarErroLogin("Informe seu e-mail ou código."); return; }
 
